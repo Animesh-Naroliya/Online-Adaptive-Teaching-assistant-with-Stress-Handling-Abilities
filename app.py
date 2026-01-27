@@ -1,13 +1,9 @@
 import time 
 import os
-from flask import Flask, jsonify, request, session, redirect, url_for, render_template, g 
+from flask import Flask, jsonify, request, session, render_template
 from flask_socketio import SocketIO, emit
-from flask_dance.contrib.google import make_google_blueprint, google
-from flask_dance.contrib.github import make_github_blueprint, github
 from dotenv import load_dotenv
 from database import db, User, Conversation, Message
-from werkzeug.security import check_password_hash
-from datetime import datetime
 from groqChatbot import llm_chatbot 
 from video_analysis.video_analysis import analyze_video_frame
 
