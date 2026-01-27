@@ -2,7 +2,7 @@ bidict==0.23.1
 blinker==1.9.0
 click==8.2.1
 colorama==0.4.6
-Flask==3.1.2
+Flask==2.3.3
 Flask-SocketIO==5.5.1
 h11==0.16.0
 itsdangerous==2.2.0
@@ -27,14 +27,7 @@ langchain
 langchain-core
 langchain-community
 langchain-groq
-# Dependencies for Audio-Analysis (SER/STT)
-pyaudio
-transformers==4.30.2
-soundfile==0.12.1
-librosa==0.10.1
-torch
-numpy==1.24.4
-pydub==0.25.1
+
 # Dependencies for Facial-Analysis (FER)
 tensorflow==2.16.1
 tf-keras==2.16.0
