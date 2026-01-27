@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Gamification Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        body { background: #111827; color: white; font-family: 'Segoe UI', sans-serif; }
+        
+        /* GAMIFICATION STYLES Headr Style*/
+        .stats-bar {
+            background: rgba(31, 41, 55, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(75, 85, 99, 0.4);
+            position: sticky; top: 0; z-index: 50;
+        }
+        
+        .xp-track {
+            background: #374151; height: 10px; width: 150px; border-radius: 5px; overflow: hidden; position: relative;
+        }
+        
+        .xp-fill {
+            background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+            height: 100%; width: 0%;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .level-badge {
+            background: linear-gradient(135deg, #F59E0B, #D97706);
+            color: #111; font-weight: 800;
+            padding: 2px 10px; border-radius: 12px;
+            font-size: 0.8rem; letter-spacing: 0.05em;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .level-up-anim {
+            animation: levelUpPop 0.6s ease-out;
+        }
+        
+        @keyframes levelUpPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5) rotate(10deg); filter: brightness(1.5); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .streak-fire {
+            color: #EF4444; 
+            filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.6));
+            animation: burn 1.5s infinite alternate;
+        }
+        
+        @keyframes burn {
+            from { transform: scale(1); opacity: 0.9; }
+            to { transform: scale(1.1); opacity: 1; }
+        }
+
+        /* Quiz Styles */
+        .quiz-card {
+            background: #1F2937; border: 1px solid #374151; border-radius: 1rem;
+            transition: all 0.3s ease;
+        }
+        .option-btn {
+            transition: all 0.2s; border: 1px solid #4B5563;
+        }
+        .option-btn:hover { background: #374151; border-color: #6B7280; transform: translateX(5px); }
+        .option-btn.selected {
+            background: linear-gradient(90deg, #2563EB, #4F46E5); border-color: #60A5FA;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <div class="stats-bar px-6 py-3 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-4">
+            <div id="lvl-badge" class="level-badge">LVL 1</div>
+            <div class="flex flex-col">
+                <div class="flex justify-between text-xs text-gray-400 mb-1">
+                    <span>EXP</span>
+                    <span id="xp-text">0 / 100</span>
+                </div>
+                <div class="xp-track">
+                    <div id="xp-bar" class="xp-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
+            <i data-feather="zap" class="streak-fire w-5 h-5"></i>
+            <span class="font-bold text-gray-200"><span id="streak-count">3</span> Day Streak</span>
+        </div>
+    </div>
+
+    <main class="flex-grow flex items-center justify-center p-6">
+        
+        <div id="view-menu" class="text-center max-w-md w-full">
+            <div class="mb-8">
+                <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto flex items-center justify-center shadow-2xl mb-4">
+                    <i data-feather="book-open" class="w-10 h-10 text-white"></i>
+                </div>
+                <h1 class="text-3xl font-bold mb-2">Daily Quests</h1>
+                <p class="text-gray-400">Complete quizzes to earn XP and level up!</p>
+            </div>
+            
+            <button onclick="startSimulation()" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-lg shadow-lg transition-transform hover:scale-105 mb-4">
+                Start Python Quiz (+50 XP)
+            </button>
+            <button onclick="resetStats()" class="text-sm text-gray-500 hover:text-gray-300 underline">
+                Reset Progress
+            </button>
+        </div>
+
+        <div id="view-quiz" class="hidden w-full max-w-2xl">
+            <div class="quiz-card p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-sm text-blue-400 font-bold tracking-wider">PYTHON BASICS</span>
+                    <span class="text-sm text-gray-500">Question 1/1</span>
+                </div>
+                
+                <h2 class="text-2xl font-bold mb-8">What is the correct file extension for Python files?</h2>
+                
+                <div class="space-y-3">
+                    <button onclick="selectOption(this)" class="option-btn w-full p-4 rounded-lg text-left text-gray-300 font-medium">.pyt</button>
+                    <button onclick="selectOption(this)" class="option-btn w-full p-4 rounded-lg text-left text-gray-300 font-medium">.pt</button>
+                    <button onclick="selectOption(this)" class="option-btn w-full p-4 rounded-lg text-left text-gray-300 font-medium" data-correct="true">.py</button>
+                    <button onclick="selectOption(this)" class="option-btn w-full p-4 rounded-lg text-left text-gray-300 font-medium">.python</button>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-gray-700 flex justify-end">
+                    <button onclick="submitAnswer()" class="px-8 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold shadow-lg">
+                        Submit Answer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-reward" class="hidden text-center fade-in">
+            <div class="text-6xl mb-4"></div>
+            <h2 class="text-3xl font-bold text-white mb-2">Quest Complete!</h2>
+            <p class="text-green-400 font-bold text-xl mb-6">+50 XP Gained</p>
+            <button onclick="goHome()" class="px-8 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">Continue</button>
+        </div>
+
+    </main>
+
+    <script>
+        feather.replace();
+
+        // ---------------------------------------------WE NEED TO CHANGE THIS---------------------------------------------------
+        let userStats = {
+            xp: 0,
+            level: 1,
+            streak: 3
+        };
+
+        // UI UPDATE FUNCTIONS
+        function updateStatsUI() {
+            const xpNeeded = userStats.level * 100;
+            const percentage = (userStats.xp / xpNeeded) * 100;
+            
+            // Update Text
+            document.getElementById('lvl-badge').innerText = `LVL ${userStats.level}`;
+            document.getElementById('xp-text').innerText = `${userStats.xp} / ${xpNeeded}`;
+            document.getElementById('streak-count').innerText = userStats.streak;
+            
+            // Animate Bar
+            document.getElementById('xp-bar').style.width = `${percentage}%`;
+        }
+
+        function addXP(amount) {
+            const oldLevel = userStats.level;
+            userStats.xp += amount;
+            
+            const xpNeeded = userStats.level * 100;
+
+            // Level Up Logic
+            if (userStats.xp >= xpNeeded) {
+                userStats.xp -= xpNeeded;
+                userStats.level++;
+                triggerLevelUpAnim();
+            }
+            updateStatsUI();
+        }
+
+        function triggerLevelUpAnim() {
+            const badge = document.getElementById('lvl-badge');
+            badge.classList.add('level-up-anim');
+            badge.style.background = "linear-gradient(135deg, #10B981, #059669)"; // Green flash
+            setTimeout(() => {
+                badge.classList.remove('level-up-anim');
+                badge.style.background = ""; // Reset
+                alert(`🚀 LEVEL UP! You are now Level ${userStats.level}!`);
+            }, 600);
+        }
+
+        // --- NAVIGATION LOGIC ---
+        function startSimulation() {
+            document.getElementById('view-menu').classList.add('hidden');
+            document.getElementById('view-quiz').classList.remove('hidden');
+            // Reset options
+            document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected', 'bg-red-900', 'bg-green-900'));
+        }
+
+        function selectOption(btn) {
+            document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+
+        function submitAnswer() {
+            const selected = document.querySelector('.option-btn.selected');
+            if(!selected) return alert("Select an option!");
+
+            const isCorrect = selected.getAttribute('data-correct') === 'true';
+
+            if(isCorrect) {
+                // Correct!
+                document.getElementById('view-quiz').classList.add('hidden');
+                document.getElementById('view-reward').classList.remove('hidden');
+                
+                // Triggers the Gamification Update
+                setTimeout(() => addXP(50), 500); 
+            } else {
+                // Wrong
+                selected.classList.remove('selected');
+                selected.style.backgroundColor = '#7F1D1D'; // Red
+                selected.innerText += " ❌";
+            }
+        }
+
+        function goHome() {
+            document.getElementById('view-reward').classList.add('hidden');
+            document.getElementById('view-menu').classList.remove('hidden');
+        }
+
+        function resetStats() {
+            userStats = { xp: 0, level: 1, streak: 3 };
+            updateStatsUI();
+        }
+
+        // Initialize
+        updateStatsUI();
+
+    </script>
+</body>
+</html>

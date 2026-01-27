@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore")
 # Define file paths relative to this module's location
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # Gets the path to the VideoAnalyzer.py directory
 CASCADE_PATH = os.path.join(BASE_DIR, 'haarcascade_frontalface_default.xml')
-MODEL_PATH = os.path.join(BASE_DIR, 'VideoModel.h5') 
+MODEL_PATH = os.path.join(BASE_DIR, 'video-model.h5') 
 
 # Define emotion labels (Ensure this order matches your model's output)
 EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise'] 

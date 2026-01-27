@@ -9,7 +9,7 @@ from database import db, User, Conversation, Message
 from werkzeug.security import check_password_hash
 from datetime import datetime
 from groqChatbot import llm_chatbot 
-from VideoAnalysis.VideoAnalyzer import analyze_video_frame
+from video_analysis.video_analysis import analyze_video_frame
 
 # Set this environment variable for local testing with HTTP
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
