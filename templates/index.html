@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion-Aware Virtual Teaching Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.globe.min.js"></script>
+    <style>
+        .gateway-form { backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.1); border-radius: 16px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); }
+        .path-card { transition: all 0.5s ease; transform-style: preserve-3d; }
+        .path-card:hover { transform: translateY(-10px) scale(1.05); }
+        .interest-orb { transition: all 0.3s ease; cursor: pointer; }
+        .interest-orb:hover { transform: scale(1.2); filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.7)); }
+        .selected-orb { animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-20px); } 100% { transform: translateY(0px); } }
+        .fade-in { animation: fadeIn 1.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .slide-up { animation: slideUp 1s ease-out; }
+        @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .tts-button { background: none; border: none; color: #4CAF50; cursor: pointer; font-size: 1em; margin-left: 8px; padding: 0; outline: none; transition: color 0.2s; line-height: 1; }
+        .tts-button:hover { color: #388E3C; }
+        .vta-text-content * { margin-bottom: 0.5rem; line-height: 1.5; }
+        .vta-text-content ul, .vta-text-content ol { margin-left: 1.5rem; list-style-position: outside; }
+        .vta-text-content h1, .vta-text-content h2, .vta-text-content h3 { font-weight: bold; margin-top: 1rem; }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gray-900 text-white overflow-x-hidden" id="vanta-bg">
+    <div id="stage-1" class="min-h-screen flex items-center justify-center fade-in">
+        <div class="gateway-form p-10 max-w-md w-full text-center" data-aos="zoom-in">
+            <h1 class="text-4xl font-bold mb-6">Welcome Learner</h1>
+            <p class="mb-8 text-gray-300">Step through the gateway to begin your journey</p>
+            <div class="mb-4"><input type="email" placeholder="Your Email or Username" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"></div>
+            <div class="mb-6"><input type="password" placeholder="Your Password" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"></div>
+            <button id="login-btn" class="w-full bg-gradient-to-r from-purple-600 to-blue-500 py-3 rounded-lg font-medium hover:opacity-90 transition-all duration-300">Enter the Gateway</button>
+            <div class="mt-4 text-sm text-gray-400">Don't have account? <a href="#" id="show-signup" class="text-purple-400 underline">Signup</a></div>
+        </div>
+    </div>
+
+    <div id="signup-page" class="min-h-screen hidden flex items-center justify-center fade-in">
+        <div class="gateway-form p-10 max-w-md w-full text-center" data-aos="zoom-in">
+            <h1 class="text-4xl font-bold mb-6">Sign Up</h1>
+            <form id="signup-form" onsubmit="return false;">
+                <div class="mb-4"><input type="text" id="signup-name" placeholder="Full Name" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" required></div>
+                <div class="mb-4"><input type="text" id="signup-username" placeholder="Username" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" required></div>
+                <div class="mb-4"><input type="email" id="signup-email" placeholder="Email" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" required></div>
+                <div class="mb-4"><input type="password" id="signup-password" placeholder="Password" minlength="8" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" required></div>
+                <div class="mb-4"><input type="password" id="signup-repeat" placeholder="Confirm Password" minlength="8" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" required></div>
+                <button type="button" id="signup-btn" class="w-full bg-gradient-to-r from-purple-600 to-blue-500 py-3 rounded-lg font-medium hover:opacity-90 transition-all duration-300">Create Account</button>
+            </form>
+            <div class="mt-6 text-sm text-gray-400"><a href="#" id="back-to-login" class="text-purple-400 underline">Already have account? Login</a></div>
+        </div>
+    </div>
+
+    <div id="main-page" class="flex h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300 hidden">
+        <aside id="sidebar" class="w-64 flex-shrink-0 bg-gray-800 dark:bg-gray-900 text-white flex flex-col border-r border-gray-700 transition-transform duration-300 transform -translate-x-full md:translate-x-0">
+            <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+                <h2 class="text-xl font-bold">VTA Sessions</h2>
+                <button id="sidebar-close-btn" class="text-white md:hidden p-1 rounded hover:bg-gray-700"><i data-feather="x" class="w-6 h-6"></i></button>
+            </div>
+            
+            <div class="p-4 space-y-3">
+                <button id="new-session-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center transition-colors">
+                    <i data-feather="plus" class="w-5 h-5 mr-2"></i> New Study Session
+                </button>
+                <a href="/gamification" class="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-all shadow-lg transform hover:scale-[1.02]">
+                    <i data-feather="award" class="w-5 h-5 mr-2"></i> Gamification Hub
+                </a>
+            </div>
+
+            <nav class="flex-grow overflow-y-auto p-2 space-y-1">
+                <div id="session-list" class="space-y-1"></div>
+                <p id="no-sessions" class="text-center text-sm text-gray-500 p-4 hidden">No recent sessions.</p>
+            </nav>
+
+            <div id="combined-emotion-panel" class="p-3 bg-gray-900 border-t border-gray-700 space-y-4">
+                <div id="emotion-awareness-box" class="p-3 bg-gray-800 rounded-lg shadow-md border border-gray-700 text-center">
+                    <h3 class="text-xs font-semibold text-gray-300 mb-2 border-b border-gray-700 pb-1">Facial Emotion</h3>
+                    <div id="webcam-placeholder-container" class="h-20 w-20 mx-auto rounded-full bg-gray-700 flex items-center justify-center mb-2">
+                        <i data-feather="video-off" class="w-8 h-8 text-gray-500" id="webcam-icon"></i>
+                    </div>
+                    <video id="webcam-feed" autoplay class="hidden h-20 w-20 mx-auto rounded-full object-cover mb-2"></video>
+                    <p id="detected-emotion" class="text-sm font-bold text-green-400">Neutral</p>
+                    <button id="start-webcam-btn" class="mt-1 text-xs text-blue-400 hover:underline">Start Webcam</button>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-gray-700 text-sm">
+                <a href="#" class="block text-gray-400 hover:text-white transition-colors" onclick="logout()"><i data-feather="log-out" class="w-4 h-4 mr-2 inline"></i> Logout</a>
+            </div>
+        </aside>
+
+        <main class="flex flex-col flex-grow relative">
+            <header class="h-16 flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 transition-colors duration-300">
+                <button id="sidebar-open-btn" class="text-gray-900 dark:text-white md:hidden p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"><i data-feather="menu" class="w-6 h-6"></i></button>
+                <h1 class="text-xl font-semibold text-gray-900 dark:text-white" id="current-session-title">Welcome to VTA</h1>
+                <div id="emotion-feedback-container" class="absolute left-1/2 transform -translate-x-1/2">
+                    <div id="emotion-feedback-banner" class="text-sm font-medium text-center px-4 py-1 rounded-full text-white hidden">VTA is ready!</div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="pomodoro-timer" class="flex items-center space-x-2 p-2 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300 cursor-pointer">
+                        <i data-feather="clock" class="w-5 h-5"></i><span id="timer-display" class="font-bold">25:00</span>
+                    </div>
+                    <button id="profile-icon" class="flex items-center space-x-2 text-gray-900 dark:text-white">
+                        <div class="h-8 w-8 rounded-full bg-gradient-to-r from-purple-600 to-blue-500 flex items-center justify-center"><i data-feather="user" class="w-4 h-4 text-white"></i></div>
+                        <span class="text-sm font-medium hidden sm:inline" id="user-greeting-vta">User</span>
+                    </button>
+                </div>
+            </header>
+
+            <div id="chat-area" class="flex-grow overflow-y-auto p-6 pb-24 space-y-4">
+                <div id="messages-container" class="max-w-4xl mx-auto">
+                    <div class="flex justify-start"><div class="bg-blue-100 dark:bg-blue-800 p-3 rounded-xl max-w-lg text-sm shadow"><p class="text-blue-900 dark:text-blue-100 font-medium">Welcome! I'm your Emotion-Aware VTA. How can I help you learn today?</p></div></div>
+                </div>
+            </div>
+
+            <div class="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                <div class="max-w-4xl mx-auto flex items-center space-x-3">
+                    <input type="text" id="user-input" placeholder="Ask VTA a question..." class="flex-grow px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" autofocus>
+                    <button id="send-message-btn" class="p-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 shadow-md"><i data-feather="send" class="w-6 h-6"></i></button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); 
+                const utterance = new SpeechSynthesisUtterance(text);
+                const voices = window.speechSynthesis.getVoices();
+                const preferredVoice = voices.find(v => v.lang.startsWith('en-') && v.default);
+                if (preferredVoice) utterance.voice = preferredVoice;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function renderVtaContent(vtaElement, rawMarkdown) {
+            const contentDiv = vtaElement.querySelector('.vta-text-content');
+            if (!contentDiv) return;
+            contentDiv.innerHTML = marked.parse(rawMarkdown);
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex items-start justify-between'; 
+            const textContainer = document.createElement('div');
+            textContainer.innerHTML = contentDiv.innerHTML;
+            textContainer.className = 'flex-grow';
+            const ttsButton = document.createElement('button');
+            ttsButton.className = 'tts-button flex-shrink-0';
+            ttsButton.innerHTML = '<i class="fas fa-volume-up"></i>';
+            ttsButton.onclick = () => speakText(rawMarkdown.replace(/[\*\#\n]/g, ' ').trim());
+            wrapper.appendChild(textContainer);
+            wrapper.appendChild(ttsButton);
+            contentDiv.innerHTML = '';
+            contentDiv.appendChild(wrapper);
+        }
+
+        AOS.init({ duration: 800, easing: 'ease-in-out', once: true });
+        feather.replace();
+        const API_BASE = 'http://127.0.0.1:5000/api';
+        let currentConversationId = null;
+        let currentEmotion = "Neutral";
+        let socket; 
+
+        window.onload = function() {
+            AOS.init({ duration: 800, easing: 'ease-in-out', once: true });
+            feather.replace();
+            VANTA.GLOBE({ el: "#vanta-bg", mouseControls: true, touchControls: true, gyroControls: false, minHeight: 200.00, minWidth: 200.00, scale: 1.00, scaleMobile: 1.00, color: 0x3f3f6f, backgroundColor: 0x111827, size: 0.8 });
+            checkLoginStatus();
+            document.getElementById('show-signup')?.addEventListener('click', () => { document.getElementById('stage-1').classList.add('hidden'); document.getElementById('signup-page').classList.remove('hidden'); });
+            document.getElementById('back-to-login')?.addEventListener('click', () => { document.getElementById('signup-page').classList.add('hidden'); document.getElementById('stage-1').classList.remove('hidden'); });
+        };
+
+        // Login Logic
+        document.getElementById('login-btn').addEventListener('click', function () {
+            const identifier = document.querySelector('input[type="email"]').value;
+            const password = document.querySelector('input[type="password"]').value;
+            fetch('http://127.0.0.1:5000/login', { method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify({ identifier, password }) })
+            .then(r => r.json()).then(data => { if(data.success) window.location.reload(); else alert(data.message); });
+        });
+
+        document.getElementById('signup-btn').addEventListener('click', function () {
+            const name = document.getElementById('signup-name').value;
+            const username = document.getElementById('signup-username').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const repeat = document.getElementById('signup-repeat').value;
+            if (password !== repeat) return alert("Passwords don't match");
+            fetch('http://127.0.0.1:5000/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, username, email, password, confirm_password: repeat }) })
+            .then(r => r.json()).then(data => { if(data.success) { document.getElementById('signup-page').classList.add('hidden'); document.getElementById('stage-1').classList.remove('hidden'); alert('Created! Please Login.'); } else alert(data.message); });
+        });
+
+        function checkLoginStatus() {
+            fetch('http://127.0.0.1:5000/check_session').then(r => r.json()).then(data => {
+                if (data.is_authenticated) {
+                    document.getElementById('stage-1').classList.add('hidden');
+                    document.getElementById('main-page').classList.remove('hidden');
+                    document.getElementById('user-greeting-vta').textContent = data.username;
+                    initializeVTA();
+                }
+            });
+        }
+
+        async function fetch_data(path, method = 'GET', body = null) {
+            const opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(`http://127.0.0.1:5000${path}`, opts);
+            return res.json();
+        }
+
+        function logout() { fetch('http://127.0.0.1:5000/logout').then(() => window.location.href="/"); }
+
+        // --- Chat Functions ---
+        function createMessageElement(sender, content, emotion = null) {
+            const isVTA = sender === 'vta';
+            const align = isVTA ? 'justify-start' : 'justify-end';
+            const bgColor = isVTA ? 'bg-blue-100 dark:bg-blue-800' : 'bg-green-100 dark:bg-green-700';
+            const textColor = isVTA ? 'text-blue-900 dark:text-blue-100' : 'text-green-900 dark:text-green-100';
+            const div = document.createElement('div');
+            div.className = `flex ${align} mb-4`;
+            let inner = `<div class="${bgColor} p-3 rounded-xl max-w-lg text-sm shadow">`;
+            if(isVTA) inner += `<div class="${textColor} vta-text-content">${content}</div>`;
+            else inner += `<p class="${textColor}">${content}</p>`;
+            if(emotion) inner += `<p class="text-xs mt-1 italic text-gray-500">Emotion: ${emotion}</p>`;
+            inner += `</div>`;
+            div.innerHTML = inner;
+            return div;
+        }
+
+        function scrollToBottom() { const c = document.getElementById('chat-area'); c.scrollTop = c.scrollHeight; }
+
+        async function loadSessionMessages(sid) {
+            document.getElementById('messages-container').innerHTML = '';
+            currentConversationId = sid;
+            const data = await fetch_data(`/api/sessions/${sid}/messages`);
+            if(data.success) {
+                document.getElementById('current-session-title').textContent = data.title;
+                data.messages.forEach(msg => {
+                    const el = createMessageElement(msg.sender, msg.content, msg.emotion);
+                    document.getElementById('messages-container').appendChild(el);
+                    if(msg.sender === 'vta') renderVtaContent(el, msg.content);
+                });
+                scrollToBottom();
+            }
+        }
+
+        async function fetchRecentSessions() {
+            const list = document.getElementById('session-list');
+            list.innerHTML = '';
+            const data = await fetch_data('/api/sessions');
+            if(data.success && data.sessions.length > 0) {
+                document.getElementById('no-sessions').classList.add('hidden');
+                data.sessions.forEach(s => {
+                    const d = document.createElement('div');
+                    d.className = 'p-3 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors';
+                    d.innerHTML = `<p class="text-sm font-medium truncate">${s.title}</p><span class="text-xs text-gray-400">${s.created_at}</span>`;
+                    d.onclick = () => loadSessionMessages(s.id);
+                    list.appendChild(d);
+                });
+                if(!currentConversationId) loadSessionMessages(data.sessions[0].id);
+            } else if (!currentConversationId) startNewSession();
+        }
+
+        async function startNewSession() {
+            const data = await fetch_data('/api/sessions/new', 'POST', {});
+            if(data.success) {
+                currentConversationId = data.conversation_id;
+                document.getElementById('messages-container').innerHTML = '';
+                const el = createMessageElement('vta', data.welcome_message);
+                document.getElementById('messages-container').appendChild(el);
+                renderVtaContent(el, data.welcome_message);
+                fetchRecentSessions();
+            }
+        }
+
+        async function sendMessage(msg) {
+            if(!msg.trim() || !currentConversationId) return;
+            document.getElementById('user-input').value = '';
+            const userEl = createMessageElement('user', msg, currentEmotion);
+            document.getElementById('messages-container').appendChild(userEl);
+            scrollToBottom();
+
+            const loadingEl = createMessageElement('vta', '...');
+            loadingEl.id = 'vta-loading';
+            document.getElementById('messages-container').appendChild(loadingEl);
+            
+            const data = await fetch_data('/api/chat', 'POST', { message: msg, conversation_id: currentConversationId, emotion_detected: currentEmotion });
+            document.getElementById('vta-loading')?.remove();
+            
+            if(data.success) {
+                const vtaEl = createMessageElement('vta', data.vta_response);
+                document.getElementById('messages-container').appendChild(vtaEl);
+                renderVtaContent(vtaEl, data.vta_response);
+                scrollToBottom();
+            }
+        }
+
+        document.getElementById('send-message-btn').addEventListener('click', () => sendMessage(document.getElementById('user-input').value));
+        document.getElementById('user-input').addEventListener('keypress', (e) => { if(e.key==='Enter') sendMessage(document.getElementById('user-input').value); });
+        document.getElementById('new-session-btn').addEventListener('click', startNewSession);
+
+        // --- SocketIO (Video Only) ---
+        function initializeSocketIO() {
+            socket = io.connect('http://127.0.0.1:5000');
+            socket.on('video_response', (data) => {
+                const emotion = data.emotion || "Undetected";
+                document.getElementById('detected-emotion').textContent = emotion;
+                currentEmotion = emotion;
+                const banner = document.getElementById('emotion-feedback-banner');
+                banner.textContent = `VTA detects: ${emotion}`;
+                banner.classList.remove('hidden');
+            });
+        }
+
+        async function startWebcamStream() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const video = document.getElementById('webcam-feed');
+            video.srcObject = stream;
+            video.classList.remove('hidden');
+            document.getElementById('webcam-placeholder-container').classList.add('hidden');
+            document.getElementById('start-webcam-btn').textContent = 'Streaming...';
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            setInterval(() => {
+                if(video.readyState === video.HAVE_ENOUGH_DATA) {
+                    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0);
+                    socket.emit('video_stream', { frame: canvas.toDataURL('image/jpeg') });
+                }
+            }, 2000);
+        }
+        document.getElementById('start-webcam-btn').addEventListener('click', startWebcamStream);
+
+        function initializeVTA() {
+            feather.replace();
+            initializeSocketIO();
+            fetchRecentSessions();
+            document.getElementById('sidebar-open-btn').addEventListener('click', () => document.getElementById('sidebar').classList.remove('-translate-x-full'));
+            document.getElementById('sidebar-close-btn').addEventListener('click', () => document.getElementById('sidebar').classList.add('-translate-x-full'));
+        }
+    </script>
+</body>
+</html>
