@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion-Aware Virtual Teaching Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.globe.min.js"></script>
+    <style>
+        .gateway-form {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .path-card {
+            transition: all 0.5s ease;
+            transform-style: preserve-3d;
+        }
+
+        .path-card:hover {
+            transform: translateY(-10px) scale(1.05);
+        }
+
+        .interest-orb {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .interest-orb:hover {
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.7));
+        }
+
+        .selected-orb {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 1.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .slide-up {
+            animation: slideUp 1s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* ADDED: Styles for the TTS Button */
+        .tts-button {
+            background: none;
+            border: none;
+            color: #4CAF50; /* Green color for the speaker icon */
+            cursor: pointer;
+            font-size: 1em;
+            margin-left: 8px; /* Spacing between text and button */
+            padding: 0;
+            outline: none;
+            transition: color 0.2s;
+            line-height: 1; 
+        }
+
+        .tts-button:hover {
+            color: #388E3C;
+        }
+
+        /* NEW: Ensure Markdown content is displayed correctly */
+        .vta-text-content * {
+            margin-bottom: 0.5rem; /* Standard margin for paragraphs, lists, etc. */
+            line-height: 1.5;
+        }
+        .vta-text-content ul, .vta-text-content ol {
+            margin-left: 1.5rem;
+            list-style-position: outside;
+        }
+        .vta-text-content h1, .vta-text-content h2, .vta-text-content h3 {
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gray-900 text-white overflow-x-hidden" id="vanta-bg">
+    <div id="stage-1" class="min-h-screen flex items-center justify-center fade-in">
+        <div class="gateway-form p-10 max-w-md w-full text-center" data-aos="zoom-in">
+            <h1 class="text-4xl font-bold mb-6">Welcome Learner</h1>
+            <p class="mb-8 text-gray-300">Step through the gateway to begin your journey</p>
+
+            <div class="mb-4">
+                <input type="email" placeholder="Your Email or Username"
+                    class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            </div>
+            <div class="mb-6">
+                <input type="password" placeholder="Your Password"
+                    class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+            </div>
+
+            <button id="login-btn"
+                class="w-full bg-gradient-to-r from-purple-600 to-blue-500 py-3 rounded-lg font-medium hover:opacity-90 transition-all duration-300">
+                Enter the Gateway
+            </button>
+
+            <div class="mt-4 text-sm text-gray-400">
+                Don't have account?
+                <a href="#" id="show-signup" class="text-purple-400 underline">Signup</a>
+            </div>
+
+            <div class="mt-6 text-sm text-gray-400">
+                <p>Or continue with</p>
+                <div class="flex justify-center space-x-4 mt-3">
+                    <a href="/login/github">
+                        <button class="p-3 rounded-full bg-gray-800 hover:bg-gray-700 transition-all duration-300 group">
+                            <i data-feather="github" class="w-5 h-5 group-hover:text-white"></i>
+                        </button>
+                    </a>
+                    <a href="/login/google">
+                        <button class="p-3 rounded-full bg-gray-800 hover:bg-gray-700 transition-all duration-300 group">
+                            <svg class="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                            </svg>
+                        </button>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="signup-page" class="min-h-screen hidden flex items-center justify-center fade-in">
+        <div class="gateway-form p-10 max-w-md w-full text-center" data-aos="zoom-in">
+            <h1 class="text-4xl font-bold mb-6">Sign Up</h1>
+            <p class="mb-8 text-gray-300">Please fill in this form to create an account.</p>
+
+            <form id="signup-form" onsubmit="return false;">
+                <div class="mb-4">
+                    <input type="text" id="signup-name" placeholder="Full Name"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        required>
+                </div>
+                <div class="mb-4">
+                    <input type="text" id="signup-username" placeholder="Username"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        required>
+                </div>
+                <div class="mb-4">
+                    <input type="email" id="signup-email" placeholder="Email (example@email.com)"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        required>
+                </div>
+                <div class="mb-4">
+                    <input type="password" id="signup-password" placeholder="Password" minlength="8"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        required>
+                </div>
+                <div class="mb-4">
+                    <input type="password" id="signup-repeat" placeholder="Confirm Password" minlength="8"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        required>
+                </div>
+                <button type="button" id="signup-btn"
+                    class="w-full bg-gradient-to-r from-purple-600 to-blue-500 py-3 rounded-lg font-medium hover:opacity-90 transition-all duration-300">
+                    Create Account
+                </button>
+            </form>
+
+            <div class="mt-6 text-sm text-gray-400">
+                <a href="#" id="back-to-login" class="text-purple-400 underline">Already have account? Login</a>
+            </div>
+        </div>
+    </div>
+    <div id="stage-2" class="min-h-screen hidden flex items-center justify-center p-6">
+        <div class="gateway-form p-10 max-w-4xl w-full text-center" data-aos="zoom-in">
+            <h1 class="text-4xl font-bold mb-4">Tell Us About Yourself</h1>
+            <p class="text-xl text-gray-300 mb-12">"Help us understand your preferences to personalize your experience"
+            </p>
+
+            <div class="space-y-8">
+                <div class="bg-gradient-to-br from-green-900 to-gray-900 p-8 rounded-2xl">
+                    <h3 class="text-2xl font-semibold text-center text-green-400 mb-6">What do you like? 💚</h3>
+                    <p class="text-gray-300 text-center mb-6">Tell us about your interests, hobbies, or things you enjoy
+                    </p>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                        <button
+                            class="like-option p-3 bg-gray-800 hover:bg-green-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'like')">Reading</button>
+                        <button
+                            class="like-option p-3 bg-gray-800 hover:bg-green-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'like')">Sports</button>
+                        <button
+                            class="like-option p-3 bg-gray-800 hover:bg-green-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'like')">Music</button>
+                        <button
+                            class="like-option p-3 bg-gray-800 hover:bg-green-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'like')">Movies</button>
+                        <button
+                            class="like-option p-3 bg-gray-800 hover:bg-green-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'like')">Cooking</button>
+                        <button
+                            class="like-option p-3 bg-gray-800 hover:bg-green-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'like')">Travel</button>
+                        <button
+                            class="like-option p-3 bg-gray-800 hover:bg-green-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'like')">Gaming</button>
+                        <button
+                            class="like-option p-3 bg-gray-800 hover:bg-green-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'like')">Art</button>
+                    </div>
+
+                    <textarea id="custom-likes" placeholder="Or write your own interests here..."
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-white resize-none"
+                        rows="3"></textarea>
+                </div>
+
+                <div class="bg-gradient-to-br from-red-900 to-gray-900 p-8 rounded-2xl">
+                    <h3 class="text-2xl font-semibold text-center text-red-400 mb-6">What do you dislike? 💔</h3>
+                    <p class="text-gray-300 text-center mb-6">Tell us about things you prefer to avoid</p>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                        <button
+                            class="dislike-option p-3 bg-gray-800 hover:bg-red-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'dislike')">Crowds</button>
+                        <button
+                            class="dislike-option p-3 bg-gray-800 hover:bg-red-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'dislike')">Loud Noises</button>
+                        <button
+                            class="dislike-option p-3 bg-gray-800 hover:bg-red-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'dislike')">Spicy Food</button>
+                        <button
+                            class="dislike-option p-3 bg-gray-800 hover:bg-red-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'dislike')">Horror Movies</button>
+                        <button
+                            class="dislike-option p-3 bg-gray-800 hover:bg-red-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'dislike')">Early Mornings</button>
+                        <button
+                            class="dislike-option p-3 bg-gray-800 hover:bg-red-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'dislike')">Public Speaking</button>
+                        <button
+                            class="dislike-option p-3 bg-gray-800 hover:bg-red-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'dislike')">Waiting</button>
+                        <button
+                            class="dislike-option p-3 bg-gray-800 hover:bg-red-700 rounded-lg text-sm transition-all duration-300"
+                            onclick="toggleSelection(this, 'dislike')">Clutter</button>
+                    </div>
+
+                    <textarea id="custom-dislikes" placeholder="Or write your own dislikes here..."
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-white resize-none"
+                        rows="3"></textarea>
+                </div>
+
+                <div class="text-center">
+                    <div class="space-y-4 text-center">
+                        <button id="continue-preferences"
+                            class="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-500 rounded-full font-medium text-lg hover:opacity-90 transition-all duration-300">
+                            Continue Your Journey
+                        </button>
+                        <p class="mt-3 text-sm text-gray-400">
+                            <span id="skip-preferences" class="cursor-pointer underline hover:text-white transition-colors">
+                                You can skip this step if you prefer
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="stage-3" class="min-h-screen hidden flex-col items-center justify-center p-6">
+        <h1 class="text-4xl font-bold mb-4 text-center" data-aos="fade-down">Chamber of Choices</h1>
+        <p class="text-xl text-gray-300 mb-12 max-w-lg text-center" data-aos="fade-up">Select what calls to you</p>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 max-w-6xl" id="interest-container"
+            data-aos="zoom-in">
+            </div>
+
+        <div id="continue-btn" class="mt-12 hidden" data-aos="fade-up">
+            <button
+                class="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-500 rounded-full font-medium text-lg hover:opacity-90 transition-all duration-300">
+                Continue Your Journey
+            </button>
+        </div>
+    </div>
+    <div id="stage-4" class="min-h-screen hidden flex items-center justify-center p-6">
+        <div class="gateway-form p-10 max-w-2xl w-full text-center" data-aos="zoom-in">
+            <div class="h-32 mb-8 flex items-center justify-center">
+                <i data-feather="compass" class="w-16 h-16 text-yellow-400"></i>
+            </div>
+            <h1 class="text-4xl font-bold mb-4">Every adventurer has a story</h1>
+            <p class="text-xl text-gray-300 mb-12">"Where are you on your path?"</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" data-aos="fade-up">
+                <button onclick="selectContext('school')"
+                    class="p-6 bg-gray-800 hover:bg-gray-700 rounded-xl transition-all duration-300 text-left">
+                    <h3 class="text-xl font-semibold">In School</h3>
+                    <p class="mt-2 text-gray-400">Still learning the basics</p>
+                </button>
+                <button onclick="selectContext('college')"
+                    class="p-6 bg-gray-800 hover:bg-gray-700 rounded-xl transition-all duration-300 text-left">
+                    <h3 class="text-xl font-semibold">In College/University</h3>
+                    <p class="mt-2 text-gray-400">Expanding my knowledge</p>
+                </button>
+                <button onclick="selectContext('professional')"
+                    class="p-6 bg-gray-800 hover:bg-gray-700 rounded-xl transition-all duration-300 text-left">
+                    <h3 class="text-xl font-semibold">A Working Professional</h3>
+                    <p class="mt-2 text-gray-400">Applying my skills daily</p>
+                </button>
+                <button onclick="selectContext('exploring')"
+                    class="p-6 bg-gray-800 hover:bg-gray-700 rounded-xl transition-all duration-300 text-left">
+                    <h3 class="text-xl font-semibold">Just Exploring</h3>
+                    <p class="mt-2 text-gray-400">Curious about possibilities</p>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="stage-5" class="min-h-screen hidden flex items-center justify-center p-6">
+        <div class="gateway-form p-10 max-w-5xl w-full text-center" data-aos="zoom-in">
+            <div class="mb-8">
+                <div
+                    class="h-32 w-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center shadow-xl">
+                    <i data-feather="user-check" class="w-16 h-16 text-white"></i>
+                </div>
+                <h1 class="text-4xl font-bold mb-4">Review Your Profile</h1>
+                <p class="text-xl text-gray-300">Please confirm your details are correct before we begin</p>
+            </div>
+
+            <div class="bg-gray-800 rounded-2xl p-8 mb-8 shadow-2xl" data-aos="fade-up">
+                <h3 class="text-2xl font-semibold mb-6 text-center">Your Complete Profile</h3>
+
+                <div class="mb-8 p-6 bg-gray-700 rounded-xl">
+                    <h4 class="text-lg font-medium text-yellow-400 mb-4 flex items-center">
+                        <i data-feather="user" class="w-5 h-5 mr-2"></i>
+                        Personal Information
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-300">
+                        <div>
+                            <span class="text-gray-400">Name:</span>
+                            <span id="summary-name" class="ml-2 font-medium">Not provided</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Username:</span>
+                            <span id="summary-username" class="ml-2 font-medium">Not provided</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Email:</span>
+                            <span id="summary-email" class="ml-2 font-medium">Not provided</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Context:</span>
+                            <span id="context-display" class="ml-2 font-medium">Not specified</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="p-6 bg-green-900 bg-opacity-30 rounded-xl border border-green-700">
+                        <h4 class="text-lg font-medium text-green-400 mb-4 flex items-center">
+                            <i data-feather="heart" class="w-5 h-5 mr-2"></i>
+                            Things You Like
+                        </h4>
+                        <ul class="space-y-2" id="passions-list">
+                            </ul>
+                    </div>
+
+                    <div class="p-6 bg-red-900 bg-opacity-30 rounded-xl border border-red-700">
+                        <h4 class="text-lg font-medium text-red-400 mb-4 flex items-center">
+                            <i data-feather="x-circle" class="w-5 h-5 mr-2"></i>
+                            Things You Dislike
+                        </h4>
+                        <ul class="space-y-2" id="dislikes-list">
+                            </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-4" data-aos="fade-up">
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button id="edit-profile-btn"
+                        class="px-6 py-3 bg-gray-600 hover:bg-gray-500 rounded-full font-medium text-lg transition-all duration-300">
+                        ← Edit Profile
+                    </button>
+                    <button id="confirm-profile-btn"
+                        class="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-500 rounded-full font-medium text-lg hover:opacity-90 transition-all duration-300">
+                        Looks Good! Continue →
+                    </button>
+                </div>
+                <p class="text-sm text-gray-400">You can always update your preferences later</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="quote-page" class="min-h-screen hidden flex items-center justify-center p-6">
+        <div class="max-w-4xl w-full text-center" data-aos="fade-in">
+            <blockquote class="text-3xl md:text-5xl font-light text-white italic mb-8">
+                "Every expert was once a beginner.<br>
+                Every pro was once an amateur."
+            </blockquote>
+            <p class="text-xl text-gray-300">- Your journey starts now!</p>
+        </div>
+    </div>
+
+    <div id="profile-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
+        <div class="gateway-form p-10 max-w-5xl w-full text-center relative" style="max-height: 90vh; overflow-y: auto;">
+            <button onclick="document.getElementById('profile-modal').classList.add('hidden')" class="absolute top-4 right-4 text-white hover:text-gray-400">
+                <i data-feather="x" class="w-6 h-6"></i>
+            </button>
+            <h1 class="text-3xl font-bold mb-4">Your Profile Summary</h1>
+            <div id="modal-summary-content"></div> 
+        </div>
+    </div>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <div id="main-page" class="flex h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300 hidden">
+        
+        <aside id="sidebar" class="w-64 flex-shrink-0 bg-gray-800 dark:bg-gray-900 text-white flex flex-col border-r border-gray-700 transition-transform duration-300 transform -translate-x-full md:translate-x-0">
+            <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+                <h2 class="text-xl font-bold">VTA Sessions</h2>
+                <button id="sidebar-close-btn" class="text-white md:hidden p-1 rounded hover:bg-gray-700">
+                    <i data-feather="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="p-4">
+                <button id="new-session-btn"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center transition-colors">
+                    <i data-feather="plus" class="w-5 h-5 mr-2"></i> New Study Session
+                </button>
+            </div>
+
+            <nav class="flex-grow overflow-y-auto p-2 space-y-1">
+                <div id="session-list" class="space-y-1">
+                    <div class="p-3 bg-gray-700 rounded-lg cursor-pointer">
+                        <p class="text-sm font-medium truncate">Welcome Session (Active)</p>
+                        <span class="text-xs text-gray-400">Oct 8, 2025</span>
+                    </div>
+                </div>
+                <p id="no-sessions" class="text-center text-sm text-gray-500 p-4 hidden">No recent sessions.</p>
+            </nav>
+
+            <div id="combined-emotion-panel" class="p-3 bg-gray-900 border-t border-gray-700 space-y-4">
+                
+                <div id="emotion-awareness-box" class="p-3 bg-gray-800 rounded-lg shadow-md border border-gray-700 text-center">
+                    <h3 class="text-xs font-semibold text-gray-300 mb-2 border-b border-gray-700 pb-1">Facial Emotion</h3>
+                    
+                    <div id="webcam-placeholder-container" class="h-20 w-20 mx-auto rounded-full bg-gray-700 flex items-center justify-center mb-2">
+                        <i data-feather="video-off" class="w-8 h-8 text-gray-500" id="webcam-icon"></i>
+                    </div>
+                    <video id="webcam-feed" autoplay class="hidden h-20 w-20 mx-auto rounded-full object-cover mb-2"></video>
+                    
+                    <p id="detected-emotion" class="text-sm font-bold text-green-400">Neutral</p>
+                    <button id="start-webcam-btn" class="mt-1 text-xs text-blue-400 hover:underline">Start Webcam</button>
+                </div>
+
+                <div id="voice-emotion-box" class="p-3 bg-gray-800 rounded-lg shadow-md border border-gray-700 text-center">
+                    <h3 class="text-xs font-semibold text-gray-300 mb-2 border-b border-gray-700 pb-1">Voice Emotion</h3>
+                    
+                    <div class="h-12 w-12 mx-auto mb-2 flex items-center justify-center">
+                        <i data-feather="volume-2" id="voice-icon" class="w-6 h-6 text-gray-500"></i>
+                    </div>
+                    
+                    <p id="detected-voice-emotion" class="text-sm font-bold text-gray-400">No Audio Yet</p>
+                    <p id="voice-status" class="text-xs text-gray-500 mt-1">Ready to listen...</p>
+                </div>
+
+            </div>
+            <div class="p-4 border-t border-gray-700 text-sm">
+                <a href="#" class="block text-gray-400 hover:text-white transition-colors" onclick="logout()">
+                    <i data-feather="log-out" class="w-4 h-4 mr-2 inline"></i> Logout
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex flex-col flex-grow relative">
+            <header class="h-16 flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 transition-colors duration-300">
+                <button id="sidebar-open-btn" class="text-gray-900 dark:text-white md:hidden p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i data-feather="menu" class="w-6 h-6"></i>
+                </button>
+                
+                <h1 class="text-xl font-semibold text-gray-900 dark:text-white" id="current-session-title">
+                    Welcome to VTA
+                </h1>
+
+                <div id="emotion-feedback-container" class="absolute left-1/2 transform -translate-x-1/2">
+                    <div id="emotion-feedback-banner" class="text-sm font-medium text-center px-4 py-1 rounded-full text-white hidden">
+                        VTA is ready to adapt!
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    
+                    <div id="pomodoro-timer" class="flex items-center space-x-2 p-2 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300 cursor-pointer" title="Pomodoro Focus Timer">
+                        <i data-feather="clock" class="w-5 h-5"></i>
+                        <span id="timer-display" class="font-bold">25:00</span>
+                    </div>
+                    
+                    <button id="profile-icon" class="flex items-center space-x-2 text-gray-900 dark:text-white">
+                        <div class="h-8 w-8 rounded-full bg-gradient-to-r from-purple-600 to-blue-500 flex items-center justify-center">
+                            <i data-feather="user" class="w-4 h-4 text-white"></i>
+                        </div>
+                        <span class="text-sm font-medium hidden sm:inline" id="user-greeting-vta">User</span>
+                    </button>
+                </div>
+            </header>
+
+            <div id="profile-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
+                <div class="gateway-form p-10 max-w-5xl w-full text-center relative" style="max-height: 90vh; overflow-y: auto;">
+                    <button onclick="document.getElementById('profile-modal').classList.add('hidden')" class="absolute top-4 right-4 text-white hover:text-gray-400">
+                        <i data-feather="x" class="w-6 h-6"></i>
+                    </button>
+                    <h1 class="text-3xl font-bold mb-4">Your Profile Summary</h1>
+                    <div id="modal-summary-content"></div> 
+                </div>
+            </div>
+            <div id="chat-area" class="flex-grow overflow-y-auto p-6 pb-24 space-y-4">
+                <div id="messages-container" class="max-w-4xl mx-auto">
+                    <div class="flex justify-start">
+                        <div class="bg-blue-100 dark:bg-blue-800 p-3 rounded-xl max-w-lg text-sm shadow">
+                            <p class="text-blue-900 dark:text-blue-100 font-medium">Welcome! I'm your Emotion-Aware VTA. How can I help you learn today?</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                <div class="max-w-4xl mx-auto flex items-center space-x-3">
+                    
+                    <button id="mic-toggle-btn" class="p-3 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors duration-200 shadow-md" title="Toggle Voice Input">
+                        <i data-feather="mic" class="w-6 h-6"></i>
+                    </button>
+
+                    <input type="text" id="user-input" placeholder="Ask VTA a question or type your prompt..."
+                        class="flex-grow px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        autofocus>
+                    
+                    <button id="send-message-btn" class="p-3 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 shadow-md">
+                        <i data-feather="send" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+    </footer>
+    </div>
+
+    <script>
+        // ADDED: Text-to-Speech (TTS) Function
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); 
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                utterance.rate = 1.0; 
+                utterance.pitch = 1.0; 
+                
+                // Set voice if available
+                const voices = window.speechSynthesis.getVoices();
+                const preferredVoice = voices.find(v => v.lang.startsWith('en-') && v.default);
+                if (preferredVoice) {
+                    utterance.voice = preferredVoice;
+                }
+
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.error("Web Speech API (Text-to-Speech) not supported in this browser.");
+            }
+        }
+
+        // NEW: Function to Render Markdown and add the TTS Button
+        /**
+         * Renders the full VTA message (Markdown -> HTML) and adds the TTS speaker button.
+         * @param {HTMLElement} vtaElement The root element of the message (the flex div).
+         * @param {string} rawMarkdown The raw text content received from the AI.
+         */
+        function renderVtaContent(vtaElement, rawMarkdown) {
+            const messageBox = vtaElement.querySelector('.bg-blue-100, .dark\\:bg-blue-800');
+            const contentDiv = vtaElement.querySelector('.vta-text-content');
+            
+            if (!messageBox || !contentDiv) return;
+
+            // 1. Convert Markdown to HTML using Marked.js
+            // We use innerHTML here because the output of marked.parse is sanitized HTML
+            contentDiv.innerHTML = marked.parse(rawMarkdown);
+            
+            // 2. Wrap the HTML content and the TTS button for proper alignment
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex items-start justify-between'; 
+
+            // Create a div to contain the rendered text (H1, UL, P tags)
+            const textContainer = document.createElement('div');
+            textContainer.innerHTML = contentDiv.innerHTML;
+            textContainer.className = 'flex-grow'; // Allow it to take up space
+
+            // Get the clean text for speech (from the raw, unrendered version)
+            const speechText = rawMarkdown.replace(/[\*\#\n]/g, ' ').trim();
+
+            // Create the TTS button
+            const ttsButton = document.createElement('button');
+            ttsButton.className = 'tts-button flex-shrink-0';
+            ttsButton.innerHTML = '<i class="fas fa-volume-up"></i>';
+            ttsButton.title = 'Speak Response';
+            ttsButton.onclick = function() {
+                speakText(speechText);
+            };
+
+            // Reconstruct the message box content
+            wrapper.appendChild(textContainer);
+            wrapper.appendChild(ttsButton);
+            
+            // Replace the raw content div's children with the new wrapper
+            contentDiv.innerHTML = '';
+            contentDiv.appendChild(wrapper);
+        }
+
+
+        // Initialize animations and effects
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
+        const API_BASE = 'http://127.0.0.1:5000/api';
+        let currentConversationId = null;
+        let currentEmotion = "Neutral";
+        let socket; 
+        let mediaRecorder; // Global variable for audio recording
+        // Initialize static globe (non-moving)
+        function initializeStaticGlobe() {
+            try {
+                VANTA.GLOBE({
+                    el: "#static-globe",
+                    mouseControls: false,
+                    touchControls: false,
+                    gyroControls: false,
+                    minHeight: 200.00,
+                    minWidth: 200.00,
+                    scale: 1.00,
+                    scaleMobile: 1.00,
+                    color: 0x3f3f6f,
+                    backgroundColor: 0x111827,
+                    size: 0.8,
+                    speed: 0 // Static - no movement
+                });
+            } catch (error) {
+                console.log('Static globe initialization skipped');
+            }
+        }
+
+        // Initialize loading globe (moving)
+        function initializeLoadingGlobe() {
+            try {
+                VANTA.GLOBE({
+                    el: "#loading-globe",
+                    mouseControls: true,
+                    touchControls: true,
+                    gyroControls: false,
+                    minHeight: 200.00,
+                    minWidth: 200.00,
+                    scale: 1.00,
+                    scaleMobile: 1.00,
+                    color: 0x3f3f6f,
+                    backgroundColor: 0x111827,
+                    size: 0.8,
+                    speed: 1.5 // Moving for loading state
+                });
+            } catch (error) {
+                console.log('Loading globe initialization skipped');
+            }
+        }
+        
+        window.onload = function() {
+            // 1. Initialize global dependencies (AOS for animations, Vanta for background, Feather icons)
+            AOS.init({ duration: 800, easing: 'ease-in-out', once: true });
+            feather.replace();
+
+            VANTA.GLOBE({
+                el: "#vanta-bg",
+                mouseControls: true,
+                touchControls: true,
+                gyroControls: false,
+                minHeight: 200.00,
+                minWidth: 200.00,
+                scale: 1.00,
+                scaleMobile: 1.00,
+                color: 0x3f3f6f,
+                backgroundColor: 0x111827,
+                size: 0.8
+            });
+            
+            // 2. Run the session check. This function will call initializeVTA() 
+            //    if the user is already logged in (i.e., returning users).
+            checkLoginStatus(); 
+
+            // 3. Attach listeners to previous stages (keep existing logic)
+            document.getElementById('show-signup')?.addEventListener('click', function () {
+                document.getElementById('stage-1').classList.add('hidden');
+                document.getElementById('signup-page').classList.remove('hidden');
+            });
+
+            document.getElementById('back-to-login')?.addEventListener('click', function () {
+                document.getElementById('signup-page').classList.add('hidden');
+                document.getElementById('stage-1').classList.remove('hidden');
+            });
+
+            // We do NOT attach the login/signup/profile handlers here. They are 
+            // handled by their own functions (login(), signup(), update_profile()) 
+            // already defined in your code.
+        };           
+            
+        const interests = [
+            "Fantasy Novels", "Coding", "Hiking", "Action Movies",
+            "Photography", "Cooking", "Music", "Travel",
+            "Gaming", "Yoga", "Art", "Science"
+        ];
+
+        // Stage 1: Login
+        document.getElementById('login-btn').addEventListener('click', function () {
+            const identifier = document.querySelector('input[type="email"]').value; // This needs to be a unified input for email or username
+            const password = document.querySelector('input[type="password"]').value;
+
+            fetch('http://127.0.0.1:5000/login', {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json',
+               },
+                body: JSON.stringify({ identifier, password }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                // If the response is not OK (e.g., 401), throw an error
+                    return response.json().then(err => { throw new Error(err.message); });
+                 }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    console.log('Login successful:', data);
+                    // Reload page to trigger the checkloginStatus on window.onload
+                    window.location.reload();                    
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+             console.error('Login failed:', error);
+                alert(error.message);
+            });
+        });
+
+        // Show Signup page
+        document.getElementById('show-signup').addEventListener('click', function () {
+            document.getElementById('stage-1').classList.add('hidden');
+            document.getElementById('signup-page').classList.remove('hidden');
+        });
+
+        // Back to login from signup
+        document.getElementById('back-to-login').addEventListener('click', function () {
+            document.getElementById('signup-page').classList.add('hidden');
+            document.getElementById('stage-1').classList.remove('hidden');
+        });
+
+        // Signup validation with specific email domain and direct transition
+        document.getElementById('signup-btn').addEventListener('click', function (e) {
+            e.preventDefault();
+
+            const name = document.getElementById('signup-name').value.trim();
+            const username = document.getElementById('signup-username').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value.trim();
+            const repeat = document.getElementById('signup-repeat').value.trim();
+
+            // 1. Client-Side Validation
+            if (!name || !username || !email || !password || !repeat) {
+                alert("Please fill out all fields before proceeding.");
+                return;
+            }
+
+            const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            if (!emailPattern.test(email)) {
+                alert("Invalid email format. Please enter a valid email address (example@email.com)");
+                return;
+            }
+
+            if (password.length < 8) {
+                alert("Password must be at least 8 characters long.");
+                return;
+            }
+
+            if (password !== repeat) {
+                alert("Passwords do not match. Please check again.");
+                return;
+            }
+
+            // 2. Server-Side Request (API Call)
+            fetch('http://127.0.0.1:5000/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    username: username,
+                    email: email,
+                    password: password,
+                    confirm_password: repeat
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // Handle HTTP errors (e.g., 400, 409)
+                    return response.json().then(err => { throw new Error(err.message); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Signup successful:', data);
+                if (data.success){
+                    document.getElementById('signup-page').classList.add('hidden');
+                    document.getElementById('stage-2').classList.remove('hidden');
+                    document.getElementById('stage-2').classList.add('slide-up');
+                }
+                else{
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Signup failed:', error);
+                alert(error.message); // Display error message from the backend
+            });
+        });
+        // Add Enter key support for signup form
+        document.getElementById('signup-form').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('signup-btn').click();
+            }
+        });
+
+        // Alternative: Add direct click handler that bypasses validation for testing
+        document.getElementById('signup-btn').addEventListener('dblclick', function (e) {
+            console.log('Double-click detected - bypassing validation');
+            document.getElementById('signup-page').classList.add('hidden');
+            document.getElementById('stage-2').classList.remove('hidden');
+            document.getElementById('stage-2').classList.add('slide-up');
+        });
+
+        // Stage 2: Likes and Dislikes Selection
+        function toggleSelection(button, type) {
+            button.classList.toggle('selected');
+            if (type === 'like') {
+                button.classList.toggle('bg-green-700');
+            } else {
+                button.classList.toggle('bg-red-700');
+            }
+        }
+
+        // to handle the "skip" action
+        document.getElementById('skip-preferences').addEventListener('click', function() {
+            console.log('User chose to skip preferences.');
+            // Move directly to the next stage without saving any data
+            document.getElementById('stage-2').classList.add('hidden');
+            document.getElementById('stage-4').classList.remove('hidden');
+        });
+
+        // for the "Continue Your Journey" button
+        document.getElementById('continue-preferences').addEventListener('click', function () {
+            const selectedLikes = [];
+            const selectedDislikes = [];
+
+            document.querySelectorAll('.like-option.selected').forEach(btn => {
+                selectedLikes.push(btn.textContent);
+            });
+
+            document.querySelectorAll('.dislike-option.selected').forEach(btn => {
+                selectedDislikes.push(btn.textContent);
+            });
+
+            const customLikes = document.getElementById('custom-likes').value.trim();
+            const customDislikes = document.getElementById('custom-dislikes').value.trim();
+
+            if (customLikes) selectedLikes.push(customLikes);
+            if (customDislikes) selectedDislikes.push(customDislikes);
+
+            // Prepare data to be sent
+            const preferencesData = {
+                likes: selectedLikes,
+                dislikes: selectedDislikes
+            };
+
+            // Make API call to store data
+            fetch('http://127.0.0.1:5000/api/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(preferencesData),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.message); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Preferences updated successfully:', data);
+                // Save preferences to the window object for later use
+                window.userPreferences = preferencesData; 
+                if (data.success) {
+                    // Move to Stage 4
+                    document.getElementById('stage-2').classList.add('hidden');
+                    document.getElementById('stage-4').classList.remove('hidden');
+                } else {
+                    alert('Failed to save preferences: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Failed to save preferences:', error);
+                alert('Failed to save preferences. Please try again.');
+            });
+        });
+        // Stage 4: Context Selection
+        function selectContext(context) {
+            // Store context for later use (this is a good practice)
+            window.userContext = context;
+
+            // Retrieve the user preferences that were saved from the previous step
+            const userPreferences = window.userPreferences || { likes: [], dislikes: [] };
+
+            // Combine all profile data into a single object
+            const profileData = {
+                likes: userPreferences.likes,
+                dislikes: userPreferences.dislikes,
+                context: window.userContext
+            };
+
+            // Make the API call to store the complete profile data
+            fetch('http://127.0.0.1:5000/api/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(profileData),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.message); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Profile context updated:', data);
+                if (data.success) {
+                    // Move to Stage 5
+                    document.getElementById('stage-4').classList.add('hidden');
+                    document.getElementById('stage-5').classList.remove('hidden');
+                    // Populate summary information after the data is successfully sent
+                    populateProfileSummary();
+                } else {
+                    alert('Failed to save profile context: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Failed to save context:', error);
+                alert('Failed to save your profile context. Please try again.');
+            });
+        }
+        // Function to populate the profile summary
+        function populateProfileSummary() {
+            // Get form data from signup
+            const name = document.getElementById('signup-name').value.trim() || 'Not provided';
+            const username = document.getElementById('signup-username').value.trim() || 'Not provided';
+            const email = document.getElementById('signup-email').value.trim() || 'Not provided';
+
+            // Update personal information
+            document.getElementById('summary-name').textContent = name;
+            document.getElementById('summary-username').textContent = username;
+            document.getElementById('summary-email').textContent = email;
+
+            // Update context
+            const contextDisplay = document.getElementById('context-display');
+            switch (window.userContext) {
+                case 'school': contextDisplay.textContent = "In School - Still learning the basics"; break;
+                case 'college': contextDisplay.textContent = "In College/University - Expanding my knowledge"; break;
+                case 'professional': contextDisplay.textContent = "A Working Professional - Applying my skills daily"; break;
+                case 'exploring': contextDisplay.textContent = "Just Exploring - Curious about possibilities"; break;
+                default: contextDisplay.textContent = "Not specified"; break;
+            }
+
+            // Display likes
+            const passionsList = document.getElementById('passions-list');
+            passionsList.innerHTML = '';
+
+            if (window.userPreferences && window.userPreferences.likes.length > 0) {
+                window.userPreferences.likes.forEach(like => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center text-gray-300';
+                    li.innerHTML = `<i data-feather="heart" class="w-4 h-4 mr-2 text-green-400"></i> ${like}`;
+                    passionsList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.className = 'flex items-center text-gray-400';
+                li.innerHTML = `<i data-feather="minus" class="w-4 h-4 mr-2"></i> No preferences specified`;
+                passionsList.appendChild(li);
+            }
+
+            // Display dislikes
+            const dislikesList = document.getElementById('dislikes-list');
+            dislikesList.innerHTML = '';
+
+            if (window.userPreferences && window.userPreferences.dislikes.length > 0) {
+                window.userPreferences.dislikes.forEach(dislike => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center text-gray-300';
+                    li.innerHTML = `<i data-feather="x-circle" class="w-4 h-4 mr-2 text-red-400"></i> ${dislike}`;
+                    dislikesList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.className = 'flex items-center text-gray-400';
+                li.innerHTML = `<i data-feather="minus" class="w-4 h-4 mr-2"></i> No dislikes specified`;
+                dislikesList.appendChild(li);
+            }
+
+            feather.replace();
+        }
+
+        // Edit Profile Button
+        document.getElementById('edit-profile-btn').addEventListener('click', function () {
+            // Go back to signup page for editing
+            document.getElementById('stage-5').classList.add('hidden');
+            document.getElementById('signup-page').classList.remove('hidden');
+        });
+
+        // Confirm Profile Button
+                // Listener for the final step of the profile setup (new users)
+        document.getElementById('confirm-profile-btn')?.addEventListener('click', function () {
+            // Hide Stage 5, show the Quote Page
+            document.getElementById('stage-5').classList.add('hidden');
+            document.getElementById('quote-page').classList.remove('hidden');
+
+            // After a delay on the Quote Page, transition to the VTA main chat interface
+            setTimeout(() => {
+                document.getElementById('quote-page').classList.add('hidden');
+                document.getElementById('main-page').classList.remove('hidden');
+
+                // This is the crucial call: initialize the VTA-specific functionality
+                initializeVTA(); 
+            }, 4000); // 4 seconds delay from quote page
+        });
+
+        // to check the login status
+        // --- New/Updated checkLoginStatus function ---
+        function checkLoginStatus() {
+            fetch('http://127.0.0.1:5000/check_session')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.is_authenticated) {
+                        // User is logged in. Hide login stages and show main page.
+                        document.getElementById('stage-1').classList.add('hidden');
+                        document.getElementById('main-page').classList.remove('hidden');
+
+                        // Update greeting with username and set theme
+                        const userName = data.username || 'Learner';
+                        document.getElementById('user-greeting-vta').textContent = userName; // New VTA greeting
+                        
+                        // Apply saved theme (dark/light mode)
+                        if (data.theme === 'dark') {
+                            document.documentElement.classList.add('dark');
+                        } else {
+                            document.documentElement.classList.remove('dark');
+                        }
+
+                        // *** CRUCIAL: Initialize the VTA chat interface ***
+                        initializeVTA();
+                    } else {
+                        // Not authenticated, ensure only the login page is shown
+                        document.getElementById('stage-1').classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking session:', error);
+                    document.getElementById('stage-1').classList.remove('hidden');
+                });
+        }
+// ---------------------------------------------
+
+
+        // Simulate loading with moving globe
+        function simulateLoading() {
+            // Hide static globe, show loading globe
+            document.getElementById('static-globe').classList.add('hidden');
+            document.getElementById('loading-globe').classList.remove('hidden');
+
+            // Initialize moving globe
+            initializeLoadingGlobe();
+
+            // Simulate loading for 3 seconds
+            setTimeout(() => {
+                // Hide loading globe, show static globe
+                document.getElementById('loading-globe').classList.add('hidden');
+                document.getElementById('static-globe').classList.remove('hidden');
+
+                // Reinitialize static globe
+                initializeStaticGlobe();
+
+                alert('Loading complete! This is where your learning content would appear.');
+            }, 3000);
+        }
+
+        function get_api_endpoint(path) {
+            return `http://127.0.0.1:5000${path}`;
+        }
+
+        // **UPDATED fetch_data function to robustly handle non-JSON 404 responses**
+        async function fetch_data(path, method = 'GET', body = null) {
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+            const url = get_api_endpoint(path);
+            const response = await fetch(url, options);
+            
+            // Check for network or application errors (status 404, 500, or 401 from login_required)
+            if (!response.ok) {
+                let error_message = `HTTP Error: ${response.status} ${response.statusText} for ${url}`;
+                
+                // Attempt to read the error message as JSON (Flask's jsonify on error)
+                try {
+                    const error_data = await response.json();
+                    // Prioritize Flask's custom error message if available
+                    error_message = error_data.message || error_message; 
+                } catch (e) {
+                    // If the response isn't JSON (e.g., 404 HTML page), we ignore the content
+                    console.error(`Failed to parse error response for ${url}. Received HTML/Text.`);
+                }
+                
+                // Throw an error that will be caught by the calling function's .catch() block
+                throw new Error(error_message);
+            }
+
+            // Attempt to return JSON for successful response (status 200-299)
+            try {
+                return response.json();
+            } catch (e) {
+                // Handle cases where a successful response (like a PUT) has no body (HTTP 204 No Content)
+                if (response.status === 204) {
+                     return { success: true, message: "No content returned." };
+                }
+                console.warn(`Response received for ${url}, but body was empty or not strictly JSON.`);
+                return { success: true, message: "Response body was not JSON/empty. Assuming success." };
+            }
+        }
+
+        // Logout
+        function logout() {
+            fetch('http://127.0.0.1:5000/logout')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Clear state and redirect to force session check
+                        window.location.href = "/"; 
+                    } else {
+                        alert('Logout failed.');
+                    }
+                })
+                .catch(error => console.error('Logout error:', error));
+        }
+
+        // --- POMODORO TIMER ---
+
+        let timerInterval = null;
+        let isTimerRunning = false;
+        let totalSeconds = 25 * 60; // Default 25 minutes
+        let currentMode = 'work'; // 'work' or 'break'
+
+        // **ADDED MISSING FUNCTION - FIX TIMER**
+        function updateTimerDisplay() {
+            const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+            const timerDisplay = document.getElementById('timer-display');
+            if (timerDisplay) {
+                timerDisplay.textContent = `${minutes}:${seconds}`;
+                // Update the browser tab title for better focus tracking
+                document.title = `(${minutes}:${seconds}) VTA Focus Time`;
+            }
+        }
+
+        function notifyUser(title, body) {
+            if (!("Notification" in window)) {
+                // Fallback to alert if Notification API is not supported
+                alert(title + " - " + body); 
+            } else if (Notification.permission === "granted") {
+                new Notification(title, { body: body, icon: "https://i.imgur.com/B948u3o.png" }); // Placeholder icon
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        new Notification(title, { body: body, icon: "https://i.imgur.com/B948u3o.png" });
+                    }
+                });
+            }
+        }
+
+        function switchMode() {
+            if (currentMode === 'work') {
+                currentMode = 'break';
+                totalSeconds = 5 * 60; // 5 minutes break
+                timerDisplay.closest('div').classList.replace('bg-green-100', 'bg-red-100');
+                timerDisplay.closest('div').classList.replace('text-green-800', 'text-red-800');
+                notifyUser("Time for a Break!", "Start your 5-minute break now.");
+            } else {
+                currentMode = 'work';
+                totalSeconds = 25 * 60; // 25 minutes work
+                timerDisplay.closest('div').classList.replace('bg-red-100', 'bg-green-100');
+                timerDisplay.closest('div').classList.replace('text-red-800', 'text-green-800');
+                notifyUser("Break is Over!", "Time to focus again for 25 minutes.");
+            }
+            updateTimerDisplay();
+        }
+
+        function startPomodoro() {
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                // Optionally add a Pause/Resume button state here
+                return; 
+            }
+
+            isTimerRunning = true;
+            timerInterval = setInterval(() => {
+                totalSeconds--;
+                updateTimerDisplay();
+
+                if (totalSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    isTimerRunning = false;
+                    switchMode(); // Automatically switches to break or work mode
+                    startPomodoro(); // Auto-start the next timer
+                }
+            }, 1000);
+
+            // Initial state setup
+            if (currentMode === 'work') {
+                timerDisplay.closest('div').classList.replace('bg-yellow-100', 'bg-green-100');
+                timerDisplay.closest('div').classList.replace('text-yellow-800', 'text-green-800');
+            } else {
+                timerDisplay.closest('div').classList.replace('bg-yellow-100', 'bg-red-100');
+                timerDisplay.closest('div').classList.replace('text-yellow-800', 'text-red-800');
+            }
+        }
+
+        // Update the initial event listener in the script to request notification permission:
+        document.getElementById('pomodoro-timer').addEventListener('click', startPomodoro);
+        if ("Notification" in window) {
+            Notification.requestPermission();
+        }
+        // --- CHAT & SESSION MANAGEMENT ---
+
+        // UPDATED: createMessageElement for Markdown rendering
+        function createMessageElement(sender, content, emotion = null) {
+            const isVTA = sender === 'vta';
+            const align = isVTA ? 'justify-start' : 'justify-end';
+            const bgColor = isVTA ? 'bg-blue-100 dark:bg-blue-800' : 'bg-green-100 dark:bg-green-700';
+            const textColor = isVTA ? 'text-blue-900 dark:text-blue-100' : 'text-green-900 dark:text-green-100';
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${align} mb-4`; 
+            
+            // NOTE: For VTA messages, we use a custom container to hold the rendered HTML and the TTS button
+            let contentHTML = `
+                <div class="${bgColor} p-3 rounded-xl max-w-lg text-sm shadow">
+                    <div class="${textColor} vta-text-content">${content}</div>
+                    ${emotion ? `<p class="text-xs mt-1 italic text-gray-500 dark:text-gray-400">Emotion: ${emotion}</p>` : ''}
+                </div>
+            `;
+
+            // Only for user messages, we don't need the complex inner structure, just plain text
+            if (!isVTA) {
+                contentHTML = `
+                    <div class="${bgColor} p-3 rounded-xl max-w-lg text-sm shadow">
+                        <p class="${textColor}">${content}</p>
+                        ${emotion ? `<p class="text-xs mt-1 italic text-gray-500 dark:text-gray-400">Emotion: ${emotion}</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            messageDiv.innerHTML = contentHTML;
+            return messageDiv;
+        }
+
+        function scrollToBottom() {
+            const chatArea = document.getElementById('chat-area');
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // UPDATED: loadSessionMessages to call renderVtaContent
+        async function loadSessionMessages(sessionId) {
+            const container = document.getElementById('messages-container');
+            container.innerHTML = '';
+            currentConversationId = sessionId;
+
+            // FIX: Corrected endpoint path to include /api
+            const data = await fetch_data(`/api/sessions/${sessionId}/messages`);
+            if (data.success) {
+                document.getElementById('current-session-title').textContent = data.title;
+                data.messages.forEach(msg => {
+                    const el = createMessageElement(msg.sender, msg.content, msg.emotion);
+                    container.appendChild(el);
+                    // ADDED: Render Markdown and TTS button for VTA messages
+                    if (msg.sender === 'vta') {
+                        renderVtaContent(el, msg.content);
+                    }
+                });
+                scrollToBottom();
+            } else {
+                console.error('Failed to load session:', data.message);
+            }
+        }
+
+        async function loadUserProfileData() {
+            try {
+                const data = await fetch_data('/api/profile', 'GET');
+                if (data.success) {
+                    // 1. Store data globally for use by VTA/Summary Modal
+                    window.userPreferences = {
+                        likes: data.likes,
+                        dislikes: data.dislikes
+                    };
+                    window.userContext = data.context;
+
+                    // 2. Populate the summary modal data fields immediately
+                    document.getElementById('summary-name').textContent = data.name;
+                    document.getElementById('summary-username').textContent = data.username;
+                    document.getElementById('summary-email').textContent = data.email;
+                    
+                    // NOTE: The populateProfileSummary() function will now be able to 
+                    // read from window.userPreferences and window.userContext.
+                } else {
+                    console.warn("Failed to retrieve profile preferences:", data.message);
+                }
+            } catch (error) {
+                console.error("Error fetching profile data:", error);
+            }
+        }
+
+        async function fetchRecentSessions() {
+            const list = document.getElementById('session-list');
+            const noSessions = document.getElementById('no-sessions');
+            list.innerHTML = '';
+
+            // FIX: Corrected endpoint path to include /api
+            const data = await fetch_data('/api/sessions');
+            if (data.success && data.sessions.length > 0) {
+                noSessions.classList.add('hidden');
+                data.sessions.forEach(session => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors';
+                    item.setAttribute('data-session-id', session.id);
+                    item.innerHTML = `
+                        <p class="text-sm font-medium truncate">${session.title}</p>
+                        <span class="text-xs text-gray-400">${session.created_at}</span>
+                    `;
+                    item.addEventListener('click', () => loadSessionMessages(session.id));
+                    list.appendChild(item);
+                });
+                // Load the most recent session automatically
+                if (data.sessions[0].id && !currentConversationId) {
+                    loadSessionMessages(data.sessions[0].id);
+                }
+            } else {
+                noSessions.classList.remove('hidden');
+                // Automatically create a new session if none exist
+                if (!currentConversationId) {
+                    await startNewSession();
+                }
+            }
+        }
+
+        // UPDATED: startNewSession to call renderVtaContent
+        async function startNewSession() {
+            // FIX: Corrected endpoint path to include /api
+            const data = await fetch_data('/api/sessions/new', 'POST', {});
+            if (data.success) {
+                // Set new session ID and reload sessions list
+                currentConversationId = data.conversation_id;
+                document.getElementById('messages-container').innerHTML = '';
+                const welcomeEl = createMessageElement('vta', data.welcome_message);
+                document.getElementById('messages-container').appendChild(welcomeEl);
+                // ADDED: Render Markdown and TTS button for the welcome message
+                renderVtaContent(welcomeEl, data.welcome_message);
+                document.getElementById('current-session-title').textContent = data.title;
+                fetchRecentSessions(); // Refresh sidebar
+                scrollToBottom();
+            } else {
+                alert('Failed to start new session: ' + data.message);
+            }
+        }
+
+        // UPDATED: sendMessage to stream raw text and then render Markdown/TTS button
+        async function sendMessage(message) {
+            if (!message.trim() || !currentConversationId) return;
+
+            const inputField = document.getElementById('user-input');
+            inputField.value = '';
+            
+            // Display user message immediately
+            const userEl = createMessageElement('user', message, currentEmotion);
+            document.getElementById('messages-container').appendChild(userEl);
+            scrollToBottom();
+
+            // VTA "..." Confirmation
+            const loadingEl = createMessageElement('vta', '...');
+            loadingEl.id = 'vta-loading-indicator';
+            document.getElementById('messages-container').appendChild(loadingEl);
+            scrollToBottom();
+
+
+            // Call chat API
+            const data = await fetch_data('/api/chat', 'POST', {
+                message: message,
+                conversation_id: currentConversationId,
+                emotion_detected: currentEmotion 
+            });
+
+            // Remove the loading indicator once data is received
+            document.getElementById('vta-loading-indicator')?.remove();
+
+
+            if (data.success) {
+                // Simulate text streaming effect for VTA response
+                const vtaMessage = data.vta_response;
+                
+                // Create a container element with the raw text temporarily
+                const vtaEl = createMessageElement('vta', vtaMessage, 'VTA'); 
+                document.getElementById('messages-container').appendChild(vtaEl);
+                
+                const contentDiv = vtaEl.querySelector('.vta-text-content');
+                // Temporarily store raw text for streaming effect
+                contentDiv.textContent = ''; 
+
+                let charIndex = 0;
+                const typingInterval = setInterval(() => {
+                    if (charIndex < vtaMessage.length) {
+                        contentDiv.textContent += vtaMessage.charAt(charIndex);
+                        charIndex++;
+                        scrollToBottom();
+                    } else {
+                        clearInterval(typingInterval);
+                        
+                        // NEW: Finalize the message (render Markdown and add TTS)
+                        renderVtaContent(vtaEl, vtaMessage); 
+                        scrollToBottom();
+                    }
+                }, 15); // Typing speed in milliseconds
+                
+            } else {
+                alert('VTA Error: ' + data.message);
+            }
+        }
+
+        document.getElementById('send-message-btn').addEventListener('click', () => {
+            const message = document.getElementById('user-input').value;
+            sendMessage(message);
+        });
+
+        document.getElementById('user-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage(document.getElementById('user-input').value);
+            }
+        });
+
+        document.getElementById('new-session-btn').addEventListener('click', startNewSession);
+
+
+        // --- REAL-TIME MEDIA & SOCKET.IO ---
+
+        function initializeSocketIO() {
+            socket = io.connect('http://127.0.0.1:5000');
+            
+            socket.on('connect', () => {
+                console.log('Socket.IO Connected!');
+            });
+
+            // Listener for emotion updates from the backend
+            socket.on('video_response', (data) => {
+                const emotion = data.emotion || "Undetected";
+                document.getElementById('detected-emotion').textContent = emotion;
+                currentEmotion = emotion;
+
+                // NEW: Update Feedback Banner
+                const banner = document.getElementById('emotion-feedback-banner');
+                let message = `VTA detects you are **${emotion.toUpperCase()}**! Keep focused.`;
+                let color = 'bg-blue-600';
+
+                if (emotion === 'Angry' || emotion === 'Frustrated' || emotion === 'Disgust') {
+                    message = `Take a break! You seem **${emotion.toUpperCase()}**.`;
+                    color = 'bg-red-600';
+                } else if (emotion === 'Happy' || emotion === 'Excited') {
+                    message = `That's great! You seem **${emotion.toUpperCase()}**. Let's keep this energy!`;
+                    color = 'bg-green-600';
+                } else if (emotion === 'Boredom') {
+                    message = `I see **BOREDOM**. Let's try a different teaching style.`;
+                    color = 'bg-yellow-600';
+                }
+                
+                banner.textContent = message.replace(/\*\*/g, ''); // Use textContent for safety, remove bold markers
+                banner.className = `text-sm font-medium text-center px-4 py-1 rounded-full text-white ${color}`; // Set color
+                banner.classList.remove('hidden');
+            });
+
+            // Listener for audio response (transcription + voice emotion)
+            socket.on('audio_response', (data) => {
+                const inputField = document.getElementById('user-input');
+                const voiceEmotionDisplay = document.getElementById('detected-voice-emotion');
+                const voiceStatus = document.getElementById('voice-status');
+                
+                const transcribedText = data.transcription || '';
+                const detectedVoiceEmotion = data.emotion || 'Neutral';
+                
+                // 1. Update the dedicated voice emotion display
+                voiceEmotionDisplay.textContent = detectedVoiceEmotion.toUpperCase();
+                
+                if (detectedVoiceEmotion === 'Alert' || detectedVoiceEmotion === 'Failure' || transcribedText.includes('Error')) {
+                    voiceEmotionDisplay.className = 'text-lg font-bold text-red-600 dark:text-red-400';
+                    voiceStatus.textContent = transcribedText.split(':')[0] || 'Processing Error';
+                } else {
+                    // Update color based on emotion (simple positive/negative)
+                    let emotionColor = 'text-gray-500 dark:text-gray-400';
+                    if (detectedVoiceEmotion === 'Happy' || detectedVoiceEmotion === 'Excited' || detectedVoiceEmotion === 'Concentration') {
+                        emotionColor = 'text-green-600 dark:text-green-400';
+                    } else if (detectedVoiceEmotion === 'Sad' || detectedVoiceEmotion === 'Angry' || detectedVoiceEmotion === 'Frustration') {
+                         emotionColor = 'text-yellow-600 dark:text-yellow-400';
+                    }
+                    voiceEmotionDisplay.className = `text-lg font-bold ${emotionColor}`;
+                    voiceStatus.textContent = `Analyzed: ${detectedVoiceEmotion}`;
+                }
+
+                // 2. Display the transcription in the input box
+                inputField.value = transcribedText;
+                
+                // 3. Set the current emotion for the next API call
+                currentEmotion = detectedVoiceEmotion;
+                
+                // 4. Automatically send the message (Only if not a known error/placeholder)
+                if (transcribedText.length > 5 && !transcribedText.includes("Error") && !transcribedText.includes("placeholder")) {
+                    sendMessage(transcribedText); 
+                } else if (transcribedText.includes("placeholder")) {
+                    console.log("Voice analyzed successfully, waiting for user to confirm/edit transcription.");
+                }
+
+                console.log(`Voice Emotion Detected: ${detectedVoiceEmotion}`);
+            });
+
+            // Add handler for mic-toggle-btn start state to show 'Listening'
+            document.getElementById('mic-toggle-btn').addEventListener('click', () => {
+                const micBtn = document.getElementById('mic-toggle-btn');
+                const isRecording = micBtn.classList.contains('animate-pulse');
+
+                if (isRecording) {
+                    document.getElementById('voice-status').textContent = 'Listening...';
+                } else {
+                     document.getElementById('voice-status').textContent = 'Ready to listen...';
+                }
+            });
+        }
+        // Profile icon
+        document.getElementById('profile-icon').addEventListener('click', function() {
+            const summaryContent = document.getElementById('stage-5').querySelector('.gateway-form').innerHTML;
+            document.getElementById('modal-summary-content').innerHTML = summaryContent;
+
+            populateProfileSummary();
+            
+            document.getElementById('modal-summary-content').querySelector('.space-y-4')?.classList.add('hidden');
+            document.getElementById('profile-modal').classList.remove('hidden');
+            feather.replace(); 
+        });
+        // Webcam stream for facial emotion
+        async function startWebcamStream() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const videoElement = document.getElementById('webcam-feed');
+                const placeholderContainer = document.getElementById('webcam-placeholder-container');
+                
+                videoElement.srcObject = stream;
+                videoElement.classList.remove('hidden');
+                placeholderContainer.classList.add('hidden');
+                document.getElementById('start-webcam-btn').textContent = 'Streaming...';
+                videoElement.srcObject = stream;
+        
+
+                // Stream video frames to Flask-SocketIO every 5000ms (5 seconds)
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                setInterval(() => {
+                    if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+                        canvas.width = videoElement.videoWidth;
+                        canvas.height = videoElement.videoHeight;
+                        context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                        const dataURL = canvas.toDataURL('image/jpeg'); // Send image data
+                        socket.emit('video_stream', { frame: dataURL });
+                    }
+                }, 2000); 
+
+            } catch (err) {
+                console.error("Error accessing webcam: ", err);
+                alert("Could not start webcam. Please ensure permissions are granted.");
+            }
+        }
+
+        document.getElementById('start-webcam-btn').addEventListener('click', startWebcamStream);
+
+
+        // Microphone stream for voice emotion/STT (Placeholder for more complex logic)
+        document.getElementById('mic-toggle-btn').addEventListener('click', async () => {
+            const micBtn = document.getElementById('mic-toggle-btn');
+            if (!mediaRecorder) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    micBtn.classList.replace('bg-red-500', 'bg-red-700');
+                    micBtn.classList.add('animate-pulse');
+                    
+                    // Reverted to universally supported audio/webm format
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); 
+                    let audioChunks = [];
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { 'type' : 'audio/webm' });
+                        console.log('Sending audio blob directly to server for processing.');
+                        
+                        socket.emit('audio_stream', { 
+                            audio: audioBlob
+                        }); 
+                        
+                        audioChunks = [];
+                        micBtn.classList.replace('bg-red-700', 'bg-red-500');
+                        micBtn.classList.remove('animate-pulse');
+                        mediaRecorder = null; // Reset recorder for next use
+                    };
+
+                    mediaRecorder.start();
+                    micBtn.setAttribute('title', 'Recording... Click to Stop');
+
+                } catch (err) {
+                    console.error("Error accessing microphone: ", err);
+                    alert("Could not start microphone. Please ensure permissions are granted.");
+                }
+            } else {
+                // Stop recording and send data
+                mediaRecorder.stop();
+                micBtn.setAttribute('title', 'Toggle Voice Input');
+            }
+        });
+
+
+        // --- GLOBAL SETUP ---
+
+        function initializeVTA() {
+            feather.replace();
+            initializeSocketIO();
+            loadUserProfileData(); 
+            fetchRecentSessions();
+
+
+            // Setup event listeners for the new chat interface
+            document.getElementById('sidebar-open-btn').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.remove('-translate-x-full');
+            });
+            document.getElementById('sidebar-close-btn').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+            });
+            
+            // Set user greeting from session check (already in original index.html)
+            fetch('http://127.0.0.1:5000/check_session')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.is_authenticated) {
+                        document.getElementById('user-greeting-vta').textContent = data.username;
+                        if (data.theme === 'dark') {
+                            document.documentElement.classList.add('dark');
+                        } else {
+                            document.documentElement.classList.remove('dark');
+                        }
+                    }
+                });
+        }
+
+        function initializePage() {
+            AOS.init({ duration: 800, easing: 'ease-in-out', once: true });
+            feather.replace();
+
+            VANTA.GLOBE({
+                el: "#vanta-bg",
+                mouseControls: true,
+                touchControls: true,
+                gyroControls: false,
+                minHeight: 200.00,
+                minWidth: 200.00,
+                scale: 1.00,
+                scaleMobile: 1.00,
+                color: 0x3f3f6f,
+                backgroundColor: 0x111827,
+                size: 0.8
+            });
+
+            // Check login status on every page load
+            checkLoginStatus();
+        }
+
+        window.onload = initializePage;
+
+    </script>
+</body>
+</html>
