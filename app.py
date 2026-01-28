@@ -1,6 +1,7 @@
 import time 
 import os
-from flask import Flask, jsonify, request, session, render_template
+from datetime import datetime
+from flask import Flask, jsonify, request, session, render_template, g
 from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv
 from database import db, User, Conversation, Message
@@ -40,6 +41,10 @@ def get_current_user():
         return User.query.get(user_id)
     return None
 
+@app.before_request
+def load_user():
+    g.user = get_current_user()
+
 def login_required(f):
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -60,8 +65,7 @@ def check_session():
     if user:
         return jsonify({
             'is_authenticated': True, 
-            'username': user.username,
-            'theme': user.theme
+            'username': user.username
         }), 200
     return jsonify({'is_authenticated': False}), 200
 
@@ -163,14 +167,15 @@ def chat_message():
     # Call LLM API 
     context_text = g.user.context if g.user.context else "a student"
     likes_text = g.user.likes if g.user.likes else ""
+    session_topic = conversation.topic if conversation.topic else "general learning"
     llm_response_content = None 
 
     user_data = {
         'username': g.user.username,
         'context': context_text,
         'likes': likes_text,
-        'voice_emotion': emotion_detected, 
-        'facial_emotion': emotion_detected
+        'facial_emotion': emotion_detected,
+        'session_topic': session_topic
     }
 
     try:
@@ -235,22 +240,60 @@ def get_sessions():
 
     return jsonify({'success': True, 'sessions': session_list}), 200
 
+@app.route('/api/sessions/<int:session_id>/set-topic', methods=['POST'])
+@login_required
+def set_session_topic(session_id):
+    data = request.get_json()
+    topic = data.get('topic', '').strip()
+    
+    if not topic:
+        return jsonify({'success': False, 'message': 'Topic cannot be empty'}), 400
+    
+    conversation = Conversation.query.filter_by(id=session_id, user_id=g.user.id).first()
+    
+    if not conversation:
+        return jsonify({'success': False, 'message': 'Conversation not found'}), 404
+    
+    # Update conversation topic and title
+    conversation.topic = topic
+    conversation.title = f"{topic[:50]}..." if len(topic) > 50 else topic
+    db.session.commit()
+    
+    # Send acknowledgment message
+    ack_message = Message(
+        conversation_id=session_id,
+        sender='vta',
+        content=f"Perfect! Let's dive into **{topic}**. I'm here to help you learn and understand this topic thoroughly. What would you like to know first?"
+    )
+    db.session.add(ack_message)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'topic': topic,
+        'title': conversation.title,
+        'acknowledgment': ack_message.content
+    }), 200
+
 @app.route('/api/sessions/new', methods=['POST'])
 @login_required
 def new_session():
+    # Create session with auto-generated title
     title = f"Session - {datetime.now().strftime('%b %d, %H:%M')}"
     
     new_conversation = Conversation(
         user_id=g.user.id,
-        title=title
+        title=title,
+        topic=None  # Topic will be set after user responds
     )
     db.session.add(new_conversation)
     db.session.commit()
     
+    # Send combined welcome and topic question message
     welcome_message = Message(
         conversation_id=new_conversation.id,
         sender='vta',
-        content="Welcome! I'm your Emotion-Aware VTA. Let's start a new learning session. How are you feeling today?"
+        content=f"Hello {g.user.username}! 👋 Welcome to your new learning session. I'm your Emotion-Aware Virtual Teaching Assistant.\n\nWhat would you like to study today? Please tell me the topic or subject you want to focus on in this session."
     )
     db.session.add(welcome_message)
     db.session.commit()
@@ -259,7 +302,8 @@ def new_session():
         'success': True, 
         'conversation_id': new_conversation.id,
         'title': new_conversation.title,
-        'welcome_message': welcome_message.content
+        'welcome_message': welcome_message.content,
+        'topic_set': False
     }), 201
 
 @app.route('/api/sessions/<int:session_id>/messages', methods=['GET'])
@@ -280,7 +324,13 @@ def get_session_messages(session_id):
         'timestamp': m.timestamp.strftime("%Y-%m-%d %H:%M:%S")
     } for m in messages]
 
-    return jsonify({'success': True, 'messages': message_list, 'title': conversation.title}), 200
+    return jsonify({
+        'success': True, 
+        'messages': message_list, 
+        'title': conversation.title,
+        'topic': conversation.topic,
+        'topic_set': conversation.topic is not None
+    }), 200
 
 # SOCKETIO (Real-Time Emotion Detection) 
 @socketio.on('video_stream')

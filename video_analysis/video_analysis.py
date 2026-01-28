@@ -3,8 +3,8 @@ import base64
 import warnings
 import cv2
 import numpy as np
-from tensorflow.keras.models import load_model 
-from tensorflow.keras.preprocessing.image import img_to_array
+from tf_keras.models import load_model 
+from tf_keras.preprocessing.image import img_to_array
 
 warnings.filterwarnings("ignore")
 
