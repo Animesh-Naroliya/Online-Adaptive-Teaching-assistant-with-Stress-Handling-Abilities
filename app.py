@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from database import db, User, Conversation, Message
 from groqChatbot import llm_chatbot 
 from video_analysis.video_analysis import analyze_video_frame
+import pyttsx3
+import threading
 
 # Set this environment variable for local testing with HTTP
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -332,6 +334,76 @@ def get_session_messages(session_id):
         'topic_set': conversation.topic is not None
     }), 200
 
+# Text-to-Speech Endpoint with pyttsx3
+# Global TTS engine and control
+tts_engine = None
+tts_lock = threading.Lock()
+is_speaking = False
+
+def init_tts_engine():
+    global tts_engine
+    if tts_engine is None:
+        tts_engine = pyttsx3.init()
+        tts_engine.setProperty('rate', 150)  # Speed
+        tts_engine.setProperty('volume', 1.0)  # Volume
+
+@app.route('/api/tts/speak', methods=['POST'])
+@login_required
+def text_to_speech_speak():
+    global is_speaking
+    try:
+        data = request.get_json()
+        text = data.get('text', '')
+        
+        if not text:
+            return jsonify({'success': False, 'message': 'No text provided'}), 400
+        
+        # Initialize engine if needed
+        init_tts_engine()
+        
+        # Start speaking in a thread
+        def speak():
+            global is_speaking
+            with tts_lock:
+                is_speaking = True
+                try:
+                    tts_engine.say(text)
+                    tts_engine.runAndWait()
+                except:
+                    pass
+                finally:
+                    is_speaking = False
+        
+        thread = threading.Thread(target=speak)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({'success': True}), 200
+        
+    except Exception as e:
+        print(f"TTS Error: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/tts/stop', methods=['POST'])
+@login_required
+def text_to_speech_stop():
+    global is_speaking, tts_engine
+    try:
+        if is_speaking and tts_engine:
+            # Force stop the engine
+            try:
+                tts_engine.stop()
+            except:
+                pass
+            # Reinitialize engine for next use
+            tts_engine = None
+            is_speaking = False
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        print(f"TTS Stop Error: {str(e)}")
+        is_speaking = False
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 # SOCKETIO (Real-Time Emotion Detection) 
 @socketio.on('video_stream')
 def handle_video_stream(data):
@@ -343,6 +415,7 @@ def handle_video_stream(data):
         detected_emotion = 'Neutral'
         
     emit('video_response', {'emotion': detected_emotion})
+
 
 if __name__ == '__main__':
     create_db()
