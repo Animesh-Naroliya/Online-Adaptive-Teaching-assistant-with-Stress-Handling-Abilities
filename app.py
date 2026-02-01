@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import Flask, jsonify, request, session, render_template, g
 from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv
-from database import db, User, Conversation, Message
+from database import db, User, Conversation, Message, Badge
 from groqChatbot import llm_chatbot 
 from video_analysis.video_analysis import analyze_video_frame
 import pyttsx3
@@ -35,6 +35,27 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 def create_db():
     with app.app_context():
         db.create_all()
+        # Check if badges exist; if not, seed them
+        if not Badge.query.first():
+            print("Seeding Gem Gallery with Difficulty Badges...")
+            badges = [
+                # --- Difficulty Badges ---
+                Badge(name="Novice Walker", description="Mastered the 'Very Easy' path.", icon_name="feather", rarity="Common", cost=10),
+                Badge(name="Easy Going", description="Conquered 'Easy' quizzes.", icon_name="wind", rarity="Common", cost=25),
+                Badge(name="Rising Star", description="Stepped up to 'Easy–Medium'.", icon_name="sunrise", rarity="Uncommon", cost=50),
+                Badge(name="Solid Ground", description="Established 'Medium' mastery.", icon_name="anchor", rarity="Uncommon", cost=75),
+                Badge(name="Mountain Climber", description="Scaled 'Medium–Hard'.", icon_name="trending-up", rarity="Rare", cost=150),
+                Badge(name="Hard Rock", description="Crushed 'Hard' difficulty.", icon_name="shield", rarity="Rare", cost=250),
+                Badge(name="Titanium Mind", description="Survived 'Very Hard'.", icon_name="cpu", rarity="Epic", cost=500),
+                Badge(name="Grandmaster", description="Achieved 'Expert' status.", icon_name="award", rarity="Legendary", cost=1000),
+                
+                # --- Special Badges ---
+                Badge(name="Gem Hoarder", description="Saved 500 Opal Gems.", icon_name="hexagon", rarity="Epic", cost=500),
+                Badge(name="Streak Master", description="Kept a 7-day streak.", icon_name="zap", rarity="Rare", cost=200),
+                Badge(name="Python Snake", description="A special badge for coders.", icon_name="code", rarity="Rare", cost=100)
+            ]
+            db.session.add_all(badges)
+            db.session.commit()
         print("Database tables created!")
 
 def get_current_user():
@@ -139,6 +160,111 @@ def login():
 def logout():
     session.pop('user_id', None)
     return jsonify({'success': True, 'message': 'Logged out successfully'})
+
+# GAMIFICATION ROUTES
+@app.route('/gamification')
+@login_required
+def gamification():
+    return render_template('gamification.html')
+
+@app.route('/api/gamification/stats', methods=['GET'])
+@login_required
+def get_gamification_stats():
+    return jsonify({
+        'success': True,
+        'level': g.user.level,
+        'current_xp': g.user.xp,
+        'xp_needed': g.user.level * 100,
+        'opal_gems': g.user.opal_gems,
+        'streak': g.user.streak
+    })
+
+@app.route('/api/gamification/earn', methods=['POST'])
+@login_required
+def earn_rewards():
+    data = request.get_json()
+    g.user.xp += data.get('xp', 0)
+    g.user.opal_gems += data.get('gems', 0)
+    
+    leveled_up = False
+    while g.user.xp >= (g.user.level * 100):
+        g.user.xp -= (g.user.level * 100)
+        g.user.level += 1
+        g.user.opal_gems += 20  # Bonus gems for leveling up
+        leveled_up = True
+    
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'new_level': g.user.level,
+        'leveled_up': leveled_up
+    })
+
+@app.route('/api/gamification/gallery', methods=['GET'])
+@login_required
+def badge_gallery():
+    badges = Badge.query.all()
+    user_badge_ids = [b.id for b in g.user.badges]
+    badge_data = [{
+        'id': b.id,
+        'name': b.name,
+        'description': b.description,
+        'icon': b.icon_name,
+        'rarity': b.rarity,
+        'cost': b.cost,
+        'owned': b.id in user_badge_ids,
+        'can_afford': g.user.opal_gems >= b.cost
+    } for b in badges]
+    return jsonify({'success': True, 'gallery': badge_data})
+
+@app.route('/api/gamification/buy/<int:badge_id>', methods=['POST'])
+@login_required
+def buy_badge(badge_id):
+    badge = Badge.query.get(badge_id)
+    if not badge or badge in g.user.badges:
+        return jsonify({'success': False, 'message': 'Invalid badge or already owned'}), 400
+    if g.user.opal_gems < badge.cost:
+        return jsonify({'success': False, 'message': 'Not enough Opal Gems'}), 400
+    
+    g.user.opal_gems -= badge.cost
+    g.user.badges.append(badge)
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'new_gems': g.user.opal_gems,
+        'message': f'Unlocked {badge.name}!'
+    })
+
+@app.route('/api/gamification/generate_quiz', methods=['POST'])
+@login_required
+def generate_quiz():
+    try:
+        data = request.get_json() or {}
+        difficulty = data.get('difficulty', 'Medium')
+        
+        # Get recent conversation for context
+        last_conversation = Conversation.query.filter_by(user_id=g.user.id).order_by(Conversation.created_at.desc()).first()
+        
+        chat_text = ""
+        if last_conversation:
+            messages = Message.query.filter_by(conversation_id=last_conversation.id).order_by(Message.timestamp.desc()).limit(15).all()
+            messages.reverse()
+            chat_text = "\n".join([f"{m.sender}: {m.content}" for m in messages])
+        else:
+            chat_text = "No recent conversation. Please generate a general knowledge quiz."
+
+        print(f"Generating {difficulty} quiz for User ID {g.user.id}")
+
+        quiz_data = llm_chatbot.generate_quiz(chat_text, difficulty)
+        
+        if quiz_data:
+            return jsonify({'success': True, 'quiz': quiz_data})
+        else:
+            return jsonify({'success': False, 'message': 'AI failed to format quiz.'}), 500
+
+    except Exception as e:
+        print(f"Quiz Server Error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 # CHATBOT & SESSION API 
 @app.route('/api/chat', methods=['POST'])
