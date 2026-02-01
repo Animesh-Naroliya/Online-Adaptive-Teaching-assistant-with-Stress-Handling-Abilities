@@ -1,5 +1,6 @@
 import os
-from typing import Dict, Any
+import json
+from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.messages import SystemMessage
@@ -115,6 +116,72 @@ class LLM_Chatbot:
     def _trim_history_buffer(self, history: ChatMessageHistory, max_messages: int = MAX_HISTORY_MESSAGES) -> None:
         if len(history.messages) > max_messages:
             history.messages = history.messages[-max_messages:]
+
+    def generate_quiz(self, chat_context: str, difficulty: str = "Medium", num_questions: int = 5) -> Optional[Dict[str, Any]]:
+        """Generates a quiz based on the conversation context with customizable length."""
+        
+        system_prompt = (
+            f"You are an expert quiz generator. Your task is to create a {difficulty} level quiz based on the provided conversation context. "
+            f"If the context is empty or too short, generate a general knowledge quiz about technology and science. "
+            f"\n\n**Output Format Constraint:**\n"
+            f"You must return ONLY a valid JSON object. Do not include any markdown formatting (like ```json), explanations, or extra text. "
+            f"The JSON must follow this exact structure:\n"
+            f"{{{{\n"
+            f"  \"title\": \"Quiz Title\",\n"
+            f"  \"questions\": [\n"
+            f"    {{{{\n"
+            f"      \"id\": 1,\n"
+            f"      \"question\": \"Question text here?\",\n"
+            f"      \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],\n"
+            f"      \"correct_answer\": \"Option A\" (Must be one of the options)\n"
+            f"    }}}}\n"
+            f"  ]\n"
+            f"}}}}\n"
+            f"Generate exactly {num_questions} questions."
+        )
+        
+        print(f"DEBUG: asking LLM for {num_questions} questions...")
+
+        try:
+            # Create a temporary chain for this specific task
+            # We use {context} as a variable to be safe from braces in user messages
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", system_prompt),
+                ("human", "Context:\n{context}")
+            ])
+            
+            chain = prompt | self.llm | StrOutputParser()
+            result = chain.invoke({"context": chat_context})
+            
+            # Clean up potential markdown formatting if the model disregards instructions
+            cleaned_result = result.replace("```json", "").replace("```", "").strip()
+            
+            quiz_data = json.loads(cleaned_result)
+            print(f"DEBUG: LLM Response Keys: {list(quiz_data.keys())}")
+
+            # Normalize keys (handle Capitalized 'Questions')
+            if "questions" not in quiz_data:
+                for key in quiz_data.keys():
+                    if key.lower() == "questions":
+                        quiz_data["questions"] = quiz_data.pop(key)
+                        break
+            
+            # Validation: Must have 'questions' list
+            if "questions" not in quiz_data or not isinstance(quiz_data["questions"], list):
+                print("DEBUG: Invalid quiz structure. Missing 'questions' list.")
+                return None
+
+            # HARD ENFORCEMENT: Slice the questions to the requested number
+            if len(quiz_data["questions"]) > num_questions:
+                print(f"DEBUG: LLM returned {len(quiz_data['questions'])} questions, slicing to {num_questions}")
+                quiz_data["questions"] = quiz_data["questions"][:num_questions]
+            
+            return quiz_data
+            
+        except Exception as e:
+            print(f"Quiz Generation Error: {e}")
+            return None
+
 
 # Global instance for Flask application use
 llm_chatbot = LLM_Chatbot()

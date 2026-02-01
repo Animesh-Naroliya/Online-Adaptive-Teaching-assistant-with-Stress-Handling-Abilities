@@ -241,21 +241,22 @@ def generate_quiz():
     try:
         data = request.get_json() or {}
         difficulty = data.get('difficulty', 'Medium')
+        num_questions = int(data.get('num_questions', 5))
         
         # Get recent conversation for context
         last_conversation = Conversation.query.filter_by(user_id=g.user.id).order_by(Conversation.created_at.desc()).first()
         
         chat_text = ""
         if last_conversation:
-            messages = Message.query.filter_by(conversation_id=last_conversation.id).order_by(Message.timestamp.desc()).limit(15).all()
+            messages = Message.query.filter_by(conversation_id=last_conversation.id).order_by(Message.timestamp.desc()).limit(30).all()
             messages.reverse()
             chat_text = "\n".join([f"{m.sender}: {m.content}" for m in messages])
         else:
             chat_text = "No recent conversation. Please generate a general knowledge quiz."
 
-        print(f"Generating {difficulty} quiz for User ID {g.user.id}")
+        print(f"Generating {difficulty} quiz ({num_questions} qs) for User ID {g.user.id}")
 
-        quiz_data = llm_chatbot.generate_quiz(chat_text, difficulty)
+        quiz_data = llm_chatbot.generate_quiz(chat_text, difficulty, num_questions)
         
         if quiz_data:
             return jsonify({'success': True, 'quiz': quiz_data})
