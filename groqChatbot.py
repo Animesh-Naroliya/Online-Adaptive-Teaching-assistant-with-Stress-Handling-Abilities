@@ -26,6 +26,7 @@ class LLM_Chatbot:
         facial_emotion = user_data.get('facial_emotion', 'Neutral')
         context = user_data.get('context', 'a student')
         likes = user_data.get('likes', 'learning')
+        session_topic = user_data.get('session_topic', 'general learning')
 
         if facial_emotion.upper() != 'NEUTRAL':
              current_state = f"The student is showing CONFLICT: Face is {facial_emotion.upper()}."
@@ -37,6 +38,11 @@ class LLM_Chatbot:
         system_prompt = (
             f"You are the **Emotion-Aware Virtual Teaching Assistant (VTA)**: an expert, dynamic, and highly engaging educator. "
             f"Your prime directive is to make complex learning concepts immediately captivating, personalized, and easy to digest. "
+            f"\n\n---"
+            f"\n\n**Current Session Topic:** **{session_topic}**\n"
+            f"**CRITICAL INSTRUCTION:** All your responses MUST be directly related to and focused on the topic: '{session_topic}'. "
+            f"If the student asks about something unrelated, gently redirect them back to the session topic. "
+            f"Your expertise and teaching should revolve entirely around this subject matter.\n"
             f"\n\n---"
             f"\n\n**Student Profile & Context:**\n"
             f"* **Context**: {context}\n"

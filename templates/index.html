@@ -118,11 +118,181 @@
             list-style-position: outside;
         }
 
+        .vta-text-content ul {
+            list-style-type: disc;
+        }
+
+        .vta-text-content ol {
+            list-style-type: decimal;
+        }
+
         .vta-text-content h1,
         .vta-text-content h2,
         .vta-text-content h3 {
             font-weight: bold;
             margin-top: 1rem;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        /* Box Breathing Animations */
+        .breathing-box-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .breathing-box {
+            width: 150px;
+            height: 150px;
+            border: 4px solid #60A5FA;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(96, 165, 250, 0.5);
+            transition: all 4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .breathing-box.inhale {
+            width: 250px;
+            height: 250px;
+            border-color: #3B82F6;
+            box-shadow: 0 0 60px rgba(59, 130, 246, 0.8);
+        }
+
+        .breathing-box.hold-in {
+            width: 250px;
+            height: 250px;
+            border-color: #14B8A6;
+            box-shadow: 0 0 60px rgba(20, 184, 166, 0.8);
+        }
+
+        .breathing-box.exhale {
+            width: 150px;
+            height: 150px;
+            border-color: #8B5CF6;
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+        }
+
+        .breathing-box.hold-out {
+            width: 150px;
+            height: 150px;
+            border-color: #6366F1;
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Corner Dots for Breathing Box */
+        .corner-dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #60A5FA;
+            border-radius: 50%;
+            opacity: 0.8;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .corner-dot.top-left {
+            top: -6px;
+            left: -6px;
+        }
+
+        .corner-dot.top-right {
+            top: -6px;
+            right: -6px;
+        }
+
+        .corner-dot.bottom-left {
+            bottom: -6px;
+            left: -6px;
+        }
+
+        .corner-dot.bottom-right {
+            bottom: -6px;
+            right: -6px;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            50% {
+                transform: scale(1.5);
+                opacity: 1;
+            }
+        }
+
+        /* Center Glow Effect */
+        .breathing-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(96, 165, 250, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            transition: all 4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .breathing-box.inhale~.breathing-glow {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, transparent 70%);
+        }
+
+        .breathing-box.hold-in~.breathing-glow {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(20, 184, 166, 0.4) 0%, transparent 70%);
+        }
+
+        .breathing-box.exhale~.breathing-glow {
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+        }
+
+        .breathing-box.hold-out~.breathing-glow {
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
         }
     </style>
 </head>
@@ -399,20 +569,8 @@
                 </div>
             </div>
 
-            <div class="space-y-4" data-aos="fade-up">
-                <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                    <button id="edit-profile-btn"
-                        class="px-6 py-3 bg-gray-600 hover:bg-gray-500 rounded-full font-medium text-lg transition-all duration-300">
-                        ← Edit Profile
-                    </button>
-                    <button id="confirm-profile-btn"
-                        class="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-500 rounded-full font-medium text-lg hover:opacity-90 transition-all duration-300">
-                        Looks Good! Continue →
-                    </button>
-                </div>
-                <p class="text-sm text-gray-400">You can always update your preferences later</p>
-            </div>
         </div>
+    </div>
     </div>
 
     <div id="quote-page" class="min-h-screen hidden flex items-center justify-center p-6">
@@ -514,11 +672,27 @@
 
                 <div class="flex items-center space-x-4">
 
-                    <div id="pomodoro-timer"
-                        class="flex items-center space-x-2 p-2 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300 cursor-pointer"
-                        title="Pomodoro Focus Timer">
-                        <i data-feather="clock" class="w-5 h-5"></i>
-                        <span id="timer-display" class="font-bold">25:00</span>
+                    <!-- Pomodoro Timer Box -->
+                    <div
+                        class="flex items-center space-x-2 px-3 py-2 rounded-xl border-2 border-gray-300 dark:border-gray-600 bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-md hover:shadow-lg transition-shadow max-w-xs">
+                        <div id="pomodoro-timer"
+                            class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 cursor-pointer hover:scale-105 transition-transform shadow-sm"
+                            title="Click to Start/Pause Timer">
+                            <i data-feather="clock" class="w-4 h-4"></i>
+                            <span id="timer-display" class="font-bold text-base">25:00</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <button id="skip-break-btn"
+                                class="hidden p-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-white transition-colors shadow-sm"
+                                title="Skip Break">
+                                <i data-feather="skip-forward" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button id="pomodoro-settings-btn"
+                                class="p-1.5 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-sm"
+                                title="Timer Settings">
+                                <i data-feather="settings" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <button id="profile-icon" class="flex items-center space-x-2 text-gray-900 dark:text-white">
@@ -543,6 +717,148 @@
                     <div id="modal-summary-content"></div>
                 </div>
             </div>
+
+            <!-- Pomodoro Settings Modal -->
+            <div id="pomodoro-settings-modal"
+                class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
+                <div class="gateway-form p-8 max-w-md w-full relative">
+                    <button onclick="document.getElementById('pomodoro-settings-modal').classList.add('hidden')"
+                        class="absolute top-4 right-4 text-white hover:text-gray-400">
+                        <i data-feather="x" class="w-6 h-6"></i>
+                    </button>
+                    <h2 class="text-2xl font-bold mb-6 text-center">⏱️ Pomodoro Settings</h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3">Timer Presets</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="setPomodoroPreset('classic')"
+                                    class="p-4 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-left">
+                                    <div class="font-bold">🎯 Classic</div>
+                                    <div class="text-sm opacity-90">25 min / 5 min</div>
+                                </button>
+                                <button onclick="setPomodoroPreset('short')"
+                                    class="p-4 bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-left">
+                                    <div class="font-bold">⚡ Short</div>
+                                    <div class="text-sm opacity-90">15 min / 3 min</div>
+                                </button>
+                                <button onclick="setPomodoroPreset('long')"
+                                    class="p-4 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-left">
+                                    <div class="font-bold">🔥 Long</div>
+                                    <div class="text-sm opacity-90">50 min / 10 min</div>
+                                </button>
+                                <button onclick="setPomodoroPreset('custom')"
+                                    class="p-4 bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors text-left">
+                                    <div class="font-bold">⚙️ Custom</div>
+                                    <div class="text-sm opacity-90">Set your own</div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="custom-timer-settings" class="hidden space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Work Duration (minutes)</label>
+                                <input type="number" id="custom-work-duration" value="25" min="1" max="120"
+                                    class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Break Duration (minutes)</label>
+                                <input type="number" id="custom-break-duration" value="5" min="1" max="30"
+                                    class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <button onclick="applyCustomTimer()"
+                                class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg transition-colors">
+                                Apply Custom Timer
+                            </button>
+                        </div>
+
+                        <div class="pt-4 border-t border-gray-700">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm">Auto-start breaks</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="auto-start-breaks" class="sr-only peer" checked>
+                                    <div
+                                        class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm">Sound notifications</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="sound-notifications" class="sr-only peer" checked>
+                                    <div
+                                        class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notification Toast Container -->
+            <div id="notification-toast" class="hidden fixed top-20 right-4 z-50 animate-slide-in">
+                <div class="bg-white dark:bg-gray-800 border-l-4 border-blue-500 rounded-lg shadow-2xl p-4 max-w-sm">
+                    <div class="flex items-start space-x-3">
+                        <div id="toast-icon"
+                            class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                            <i data-feather="clock" class="w-5 h-5 text-blue-600 dark:text-blue-300"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 id="toast-title" class="font-bold text-gray-900 dark:text-white mb-1">Notification</h4>
+                            <p id="toast-message" class="text-sm text-gray-600 dark:text-gray-300">Message</p>
+                        </div>
+                        <button onclick="document.getElementById('notification-toast').classList.add('hidden')"
+                            class="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                            <i data-feather="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Box Breathing Modal -->
+            <div id="breathing-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+                <!-- Overlay -->
+                <div class="absolute inset-0 bg-black bg-opacity-90 backdrop-blur-md"></div>
+
+                <!-- Close Button - Outside Container in Top Right -->
+                <button id="close-breathing"
+                    class="absolute top-8 right-8 z-20 text-white hover:text-red-400 transition-all transform hover:scale-110 hover:rotate-90 duration-300">
+                    <i data-feather="x-circle" class="w-12 h-12"></i>
+                </button>
+
+                <!-- Breathing Container -->
+                <div class="relative z-10 flex flex-col items-center justify-center">
+                    <!-- Title -->
+                    <h2 class="text-4xl font-bold text-white mb-4 animate-fade-in tracking-wide">Box Breathing</h2>
+                    <p class="text-gray-300 mb-10 text-center text-lg">Follow the animation and breathe calmly</p>
+
+                    <!-- Breathing Box with Enhanced Animation -->
+                    <div class="breathing-box-container mb-10 relative">
+                        <!-- Corner Dots -->
+                        <div class="corner-dot top-left"></div>
+                        <div class="corner-dot top-right"></div>
+                        <div class="corner-dot bottom-left"></div>
+                        <div class="corner-dot bottom-right"></div>
+
+                        <!-- Main Breathing Box -->
+                        <div id="breathing-box" class="breathing-box"></div>
+
+                        <!-- Center Glow -->
+                        <div class="breathing-glow"></div>
+                    </div>
+
+                    <!-- Instruction Text -->
+                    <div class="text-center mb-6">
+                        <p id="breathing-instruction" class="text-2xl font-semibold text-white mb-2">Inhale</p>
+                        <p id="breathing-count" class="text-6xl font-bold text-blue-400">4</p>
+                    </div>
+
+                    <!-- Cycle Counter -->
+                    <p id="breathing-cycles" class="text-lg text-gray-300">Cycle: 1 / 3</p>
+                </div>
+            </div>
+
             <div id="chat-area" class="flex-grow overflow-y-auto p-6 pb-24 space-y-4">
                 <div id="messages-container" class="max-w-4xl mx-auto">
                     <div class="flex justify-start">
@@ -558,11 +874,7 @@
                 class="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                 <div class="max-w-4xl mx-auto flex items-center space-x-3">
 
-                    <button id="mic-toggle-btn"
-                        class="p-3 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors duration-200 shadow-md"
-                        title="Toggle Voice Input">
-                        <i data-feather="mic" class="w-6 h-6"></i>
-                    </button>
+                    <!-- Microphone button removed as per user request -->
 
                     <input type="text" id="user-input" placeholder="Ask VTA a question or type your prompt..."
                         class="flex-grow px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -637,6 +949,7 @@
         const API_BASE = 'http://127.0.0.1:5000/api';
         let currentConversationId = null;
         let currentEmotion = "Neutral";
+        let sessionTopicSet = false;  // Track if topic has been set for current session
         let socket;
         let mediaRecorder;
         function initializeStaticGlobe() {
@@ -729,6 +1042,7 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',  // Include cookies
                 body: JSON.stringify({ identifier, password }),
             })
                 .then(response => {
@@ -740,7 +1054,25 @@
                 .then(data => {
                     if (data.success) {
                         console.log('Login successful:', data);
-                        window.location.reload();
+                        // Instead of reloading, directly show the main page
+                        document.getElementById('stage-1').classList.add('hidden');
+                        document.getElementById('main-page').classList.remove('hidden');
+
+                        // Fetch username and initialize VTA
+                        fetch('http://127.0.0.1:5000/check_session', {
+                            credentials: 'include'  // Include cookies
+                        })
+                            .then(response => response.json())
+                            .then(sessionData => {
+                                if (sessionData.is_authenticated) {
+                                    document.getElementById('user-greeting-vta').textContent = sessionData.username || 'Learner';
+                                }
+                                initializeVTA();
+                            })
+                            .catch(err => {
+                                console.error('Error fetching session:', err);
+                                initializeVTA(); // Initialize anyway
+                            });
                     } else {
                         alert(data.message);
                     }
@@ -816,6 +1148,13 @@
                 .then(data => {
                     console.log('Signup successful:', data);
                     if (data.success) {
+                        // Store user data for profile summary
+                        window.userData = {
+                            name: name,
+                            username: username,
+                            email: email
+                        };
+
                         document.getElementById('signup-page').classList.add('hidden');
                         document.getElementById('stage-2').classList.remove('hidden');
                         document.getElementById('stage-2').classList.add('slide-up');
@@ -1001,31 +1340,21 @@
             feather.replace();
         }
 
-        // Edit Profile Button
-        document.getElementById('edit-profile-btn').addEventListener('click', function () {
-            document.getElementById('stage-5').classList.add('hidden');
-            document.getElementById('signup-page').classList.remove('hidden');
-        });
-
-        // Confirm Profile Button
-        document.getElementById('confirm-profile-btn')?.addEventListener('click', function () {
-            document.getElementById('stage-5').classList.add('hidden');
-            document.getElementById('quote-page').classList.remove('hidden');
-
-            setTimeout(() => {
-                document.getElementById('quote-page').classList.add('hidden');
-                document.getElementById('main-page').classList.remove('hidden');
-
-                initializeVTA();
-            }, 3000);
-        });
 
         // to check the login status
         function checkLoginStatus() {
-            fetch('http://127.0.0.1:5000/check_session')
-                .then(response => response.json())
+            console.log('Checking login status...');
+            fetch('http://127.0.0.1:5000/check_session', {
+                credentials: 'include'  // Include cookies
+            })
+                .then(response => {
+                    console.log('Check session response status:', response.status);
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Check session data:', data);
                     if (data.is_authenticated) {
+                        console.log('User is authenticated, showing main page');
                         // User is logged in. Hide login stages and show main page.
                         document.getElementById('stage-1').classList.add('hidden');
                         document.getElementById('main-page').classList.remove('hidden');
@@ -1034,6 +1363,7 @@
                         document.getElementById('user-greeting-vta').textContent = userName;
                         initializeVTA();
                     } else {
+                        console.log('User is not authenticated, showing login page');
                         document.getElementById('stage-1').classList.remove('hidden');
                     }
                 })
@@ -1079,7 +1409,8 @@
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
-                }
+                },
+                credentials: 'include'  // Include cookies in requests
             };
             if (body) {
                 options.body = JSON.stringify(body);
@@ -1116,6 +1447,68 @@
         }
 
         // Logout
+        // --- TEXT-TO-SPEECH (Python pyttsx3 Backend) ---
+        let isSpeaking = false;
+
+        async function speakText(button) {
+            // Get the text content from the message
+            const messageDiv = button.closest('.group');
+            const textContent = messageDiv.querySelector('.vta-text-content');
+
+            if (!textContent) return;
+
+            // Get plain text (strip HTML)
+            const text = textContent.innerText || textContent.textContent;
+
+            // If already speaking, stop immediately
+            if (isSpeaking) {
+                try {
+                    await fetch('/api/tts/stop', { method: 'POST' });
+                    isSpeaking = false;
+                    button.innerHTML = '<i data-feather="volume-2" class="w-4 h-4"></i>';
+                    feather.replace();
+                } catch (error) {
+                    console.error('TTS Stop Error:', error);
+                }
+                return;
+            }
+
+            try {
+                // Change icon to speaking
+                button.innerHTML = '<i data-feather="volume-x" class="w-4 h-4"></i>';
+                feather.replace();
+                isSpeaking = true;
+
+                // Call backend TTS speak endpoint
+                const response = await fetch('/api/tts/speak', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Wait based on text length then reset
+                    setTimeout(() => {
+                        isSpeaking = false;
+                        button.innerHTML = '<i data-feather="volume-2" class="w-4 h-4"></i>';
+                        feather.replace();
+                    }, text.length * 50);
+                } else {
+                    throw new Error(data.message || 'TTS failed');
+                }
+            } catch (error) {
+                console.error('TTS Error:', error);
+                isSpeaking = false;
+                button.innerHTML = '<i data-feather="volume-2" class="w-4 h-4"></i>';
+                feather.replace();
+                alert('Failed to generate speech. Please try again.');
+            }
+        }
+
         function logout() {
             fetch('http://127.0.0.1:5000/logout')
                 .then(response => response.json())
@@ -1130,11 +1523,14 @@
                 .catch(error => console.error('Logout error:', error));
         }
 
-        // --- POMODORO TIMER ---
-        let timerInterval = null;
+        // --- ENHANCED POMODORO TIMER ---
+        let totalSeconds = 25 * 60;
+        let workDuration = 25 * 60;
+        let breakDuration = 5 * 60;
+        let timerInterval;
         let isTimerRunning = false;
-        let totalSeconds = 25 * 60; // Default 25 minutes
         let currentMode = 'work'; // 'work' or 'break'
+        let pomodoroCount = 0;
 
         function updateTimerDisplay() {
             const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
@@ -1143,15 +1539,25 @@
             if (timerDisplay) {
                 timerDisplay.textContent = `${minutes}:${seconds}`;
                 // Update the browser tab title for better focus tracking
-                document.title = `(${minutes}:${seconds}) VTA Focus Time`;
+                const modeEmoji = currentMode === 'work' ? '🎯' : '☕';
+                document.title = `${modeEmoji} ${minutes}:${seconds} | VTA`;
             }
         }
 
         function notifyUser(title, body) {
+            // Show toast notification
+            showToast(title, body);
+
+            // Also show browser notification if permitted
             if (!("Notification" in window)) {
-                alert(title + " - " + body);
+                // Toast already shown, no need for alert
             } else if (Notification.permission === "granted") {
-                new Notification(title, { body: body, icon: "https://i.imgur.com/B948u3o.png" }); // Placeholder icon
+                new Notification(title, { body: body, icon: "https://i.imgur.com/B948u3o.png" });
+
+                // Play sound if enabled
+                if (document.getElementById('sound-notifications')?.checked) {
+                    playNotificationSound();
+                }
             } else if (Notification.permission !== "denied") {
                 Notification.requestPermission().then(permission => {
                     if (permission === "granted") {
@@ -1161,27 +1567,140 @@
             }
         }
 
+        function showToast(title, message) {
+            const toast = document.getElementById('notification-toast');
+            const toastTitle = document.getElementById('toast-title');
+            const toastMessage = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+
+            // Update icon and color based on title
+            if (title.includes('Break')) {
+                toastIcon.className = 'flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center';
+                toastIcon.innerHTML = '<i data-feather="coffee" class="w-5 h-5 text-blue-600 dark:text-blue-300"></i>';
+            } else {
+                toastIcon.className = 'flex-shrink-0 w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center';
+                toastIcon.innerHTML = '<i data-feather="target" class="w-5 h-5 text-green-600 dark:text-green-300"></i>';
+            }
+
+            toast.classList.remove('hidden');
+            feather.replace();
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 5000);
+        }
+
+        function playNotificationSound() {
+            // Create a simple beep sound using Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
         function switchMode() {
+            const timerDisplay = document.getElementById('timer-display');
+            const timerContainer = document.getElementById('pomodoro-timer');
+            const skipBreakBtn = document.getElementById('skip-break-btn');
+
             if (currentMode === 'work') {
                 currentMode = 'break';
-                totalSeconds = 5 * 60; // 5 minutes break
-                timerDisplay.closest('div').classList.replace('bg-green-100', 'bg-red-100');
-                timerDisplay.closest('div').classList.replace('text-green-800', 'text-red-800');
-                notifyUser("Time for a Break!", "Start your 5-minute break now.");
+                pomodoroCount++;
+                totalSeconds = breakDuration;
+
+                // Update colors for break mode (gradient)
+                timerContainer.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-800 dark:text-blue-200 cursor-pointer hover:scale-105 transition-transform shadow-sm';
+
+                // Show skip break button
+                skipBreakBtn?.classList.remove('hidden');
+
+                // Always show notification
+                notifyUser("Time for a Break! ☕", `Great work! Take a ${Math.floor(breakDuration / 60)}-minute break.`);
+
+                // Play sound regardless of notification permission
+                if (document.getElementById('sound-notifications')?.checked) {
+                    playNotificationSound();
+                }
+
+                // Auto-start break if enabled
+                if (document.getElementById('auto-start-breaks')?.checked) {
+                    setTimeout(() => startPomodoro(), 2000);
+                }
             } else {
                 currentMode = 'work';
-                totalSeconds = 25 * 60; // 25 minutes work
-                timerDisplay.closest('div').classList.replace('bg-red-100', 'bg-green-100');
-                timerDisplay.closest('div').classList.replace('text-red-800', 'text-green-800');
-                notifyUser("Break is Over!", "Time to focus again for 25 minutes.");
+                totalSeconds = workDuration;
+
+                // Update colors for work mode (gradient)
+                timerContainer.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 text-green-800 dark:text-green-200 cursor-pointer hover:scale-105 transition-transform shadow-sm';
+
+                // Hide skip break button
+                skipBreakBtn?.classList.add('hidden');
+
+                // Always show notification
+                notifyUser("Break is Over! 🎯", `Time to focus for ${Math.floor(workDuration / 60)} minutes.`);
+
+                // Play sound regardless of notification permission
+                if (document.getElementById('sound-notifications')?.checked) {
+                    playNotificationSound();
+                }
+
+                // Auto-start work if enabled
+                if (document.getElementById('auto-start-breaks')?.checked) {
+                    setTimeout(() => startPomodoro(), 2000);
+                }
             }
             updateTimerDisplay();
         }
 
+        function skipBreak() {
+            if (currentMode === 'break') {
+                // Stop current timer if running
+                if (isTimerRunning) {
+                    clearInterval(timerInterval);
+                    isTimerRunning = false;
+                }
+
+                // Switch to work mode
+                currentMode = 'work';
+                totalSeconds = workDuration;
+
+                const timerContainer = document.getElementById('pomodoro-timer');
+                const skipBreakBtn = document.getElementById('skip-break-btn');
+
+                // Update colors for paused state (gray)
+                timerContainer.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 cursor-pointer hover:scale-105 transition-transform shadow-sm';
+
+                // Hide skip button
+                skipBreakBtn?.classList.add('hidden');
+
+                updateTimerDisplay();
+            }
+        }
+
         function startPomodoro() {
+            const timerContainer = document.getElementById('pomodoro-timer');
+
             if (isTimerRunning) {
+                // Pause timer
                 clearInterval(timerInterval);
                 isTimerRunning = false;
+                // Return to gray paused state
+                timerContainer.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 cursor-pointer hover:scale-105 transition-transform shadow-sm';
                 return;
             }
 
@@ -1194,20 +1713,166 @@
                     clearInterval(timerInterval);
                     isTimerRunning = false;
                     switchMode();
-                    startPomodoro();
                 }
             }, 1000);
 
+            // Update colors based on mode
             if (currentMode === 'work') {
-                timerDisplay.closest('div').classList.replace('bg-yellow-100', 'bg-green-100');
-                timerDisplay.closest('div').classList.replace('text-yellow-800', 'text-green-800');
+                timerContainer.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900 dark:to-green-800 text-green-800 dark:text-green-200 cursor-pointer hover:scale-105 transition-transform shadow-sm';
             } else {
-                timerDisplay.closest('div').classList.replace('bg-yellow-100', 'bg-red-100');
-                timerDisplay.closest('div').classList.replace('text-yellow-800', 'text-red-800');
+                timerContainer.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-800 dark:text-blue-200 cursor-pointer hover:scale-105 transition-transform shadow-sm';
             }
         }
 
+        // --- BOX BREATHING EXERCISE ---
+        let breathingInterval;
+        let breathingPhaseInterval;
+        let currentBreathingPhase = 0;
+        let currentCycle = 1;
+        const totalCycles = 3;
+        const breathingPhases = [
+            { name: 'Inhale', class: 'inhale', duration: 4, color: 'text-blue-400' },
+            { name: 'Hold', class: 'hold-in', duration: 4, color: 'text-teal-400' },
+            { name: 'Exhale', class: 'exhale', duration: 4, color: 'text-purple-400' },
+            { name: 'Hold', class: 'hold-out', duration: 4, color: 'text-indigo-400' }
+        ];
+
+        function startBreathingExercise() {
+            const modal = document.getElementById('breathing-modal');
+            modal.classList.remove('hidden');
+            currentBreathingPhase = 0;
+            currentCycle = 1;
+
+            // Pause Pomodoro timer if running and save state
+            window.pomodoroWasPaused = !isTimerRunning;
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                const timerContainer = document.getElementById('pomodoro-timer');
+                timerContainer.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-800 dark:text-gray-200 cursor-pointer hover:scale-105 transition-transform shadow-sm';
+            }
+
+            feather.replace();
+            runBreathingCycle();
+        }
+
+        function runBreathingCycle() {
+            const box = document.getElementById('breathing-box');
+            const instruction = document.getElementById('breathing-instruction');
+            const count = document.getElementById('breathing-count');
+            const cycles = document.getElementById('breathing-cycles');
+
+            const phase = breathingPhases[currentBreathingPhase];
+
+            // Update UI
+            instruction.textContent = phase.name;
+            count.className = `text-6xl font-bold ${phase.color}`;
+            cycles.textContent = `Cycle: ${currentCycle} / ${totalCycles}`;
+
+            // Update box animation
+            box.className = `breathing-box ${phase.class}`;
+
+            // Countdown
+            let timeLeft = phase.duration;
+            count.textContent = timeLeft;
+
+            clearInterval(breathingPhaseInterval);
+            breathingPhaseInterval = setInterval(() => {
+                timeLeft--;
+                count.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(breathingPhaseInterval);
+
+                    // Move to next phase
+                    currentBreathingPhase++;
+
+                    if (currentBreathingPhase >= breathingPhases.length) {
+                        currentBreathingPhase = 0;
+                        currentCycle++;
+
+                        if (currentCycle > totalCycles) {
+                            closeBreathingExercise();
+                            return;
+                        }
+                    }
+
+                    runBreathingCycle();
+                }
+            }, 1000);
+        }
+
+        function closeBreathingExercise() {
+            const modal = document.getElementById('breathing-modal');
+            modal.classList.add('hidden');
+            clearInterval(breathingPhaseInterval);
+
+            // Auto-resume Pomodoro if it was running before breathing
+            if (window.pomodoroWasPaused === false) {
+                startPomodoro();
+            }
+        }
+
+        // Close button event listener
+        document.getElementById('close-breathing')?.addEventListener('click', closeBreathingExercise);
+
+        function setPomodoroPreset(preset) {
+            // Stop current timer if running
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+            }
+
+            currentMode = 'work';
+            const customSettings = document.getElementById('custom-timer-settings');
+
+            switch (preset) {
+                case 'classic':
+                    workDuration = 25 * 60;
+                    breakDuration = 5 * 60;
+                    customSettings.classList.add('hidden');
+                    break;
+                case 'short':
+                    workDuration = 15 * 60;
+                    breakDuration = 3 * 60;
+                    customSettings.classList.add('hidden');
+                    break;
+                case 'long':
+                    workDuration = 50 * 60;
+                    breakDuration = 10 * 60;
+                    customSettings.classList.add('hidden');
+                    break;
+                case 'custom':
+                    customSettings.classList.remove('hidden');
+                    return; // Don't apply yet, wait for user input
+            }
+
+            totalSeconds = workDuration;
+            updateTimerDisplay();
+            document.getElementById('pomodoro-settings-modal').classList.add('hidden');
+        }
+
+        function applyCustomTimer() {
+            const workMins = parseInt(document.getElementById('custom-work-duration').value) || 25;
+            const breakMins = parseInt(document.getElementById('custom-break-duration').value) || 5;
+
+            workDuration = workMins * 60;
+            breakDuration = breakMins * 60;
+            totalSeconds = workDuration;
+            currentMode = 'work';
+
+            updateTimerDisplay();
+            document.getElementById('pomodoro-settings-modal').classList.add('hidden');
+        }
+
+        // Event listeners
         document.getElementById('pomodoro-timer').addEventListener('click', startPomodoro);
+        document.getElementById('skip-break-btn')?.addEventListener('click', skipBreak);
+        document.getElementById('pomodoro-settings-btn')?.addEventListener('click', function () {
+            document.getElementById('pomodoro-settings-modal').classList.remove('hidden');
+            feather.replace(); // Re-render feather icons in modal
+        });
+
         if ("Notification" in window) {
             Notification.requestPermission();
         }
@@ -1223,9 +1888,10 @@
             messageDiv.className = `flex ${align} mb-4`;
 
             let contentHTML = `
-                <div class="${bgColor} p-3 rounded-xl max-w-lg text-sm shadow">
+                <div class="${bgColor} p-3 rounded-xl max-w-lg text-sm shadow relative group">
                     <div class="${textColor} vta-text-content">${content}</div>
                     ${emotion ? `<p class="text-xs mt-1 italic text-gray-500 dark:text-gray-400">Emotion: ${emotion}</p>` : ''}
+                    ${isVTA ? `<button onclick="speakText(this)" class="tts-button absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" title="Read aloud"><i data-feather="volume-2" class="w-4 h-4"></i></button>` : ''}
                 </div>
             `;
 
@@ -1242,11 +1908,46 @@
             return messageDiv;
         }
 
+        let isAutoScrolling = true; // Track if we should auto-scroll
+        let lastScrollPosition = 0;
+
         function scrollToBottom() {
-            const chatArea = document.getElementById('chat-area');
-            chatArea.scrollTop = chatArea.scrollHeight;
+            if (isAutoScrolling) {
+                const chatArea = document.getElementById('chat-area');
+                if (chatArea) {
+                    chatArea.scrollTop = chatArea.scrollHeight;
+                }
+            }
         }
 
+        // Detect user scrolling
+        document.getElementById('chat-area')?.addEventListener('scroll', function () {
+            const chatArea = this;
+            const isAtBottom = chatArea.scrollHeight - chatArea.scrollTop <= chatArea.clientHeight + 50;
+
+            // If user scrolls up, disable auto-scroll
+            if (chatArea.scrollTop < lastScrollPosition && !isAtBottom) {
+                isAutoScrolling = false;
+            }
+            // If user scrolls to bottom, re-enable auto-scroll
+            if (isAtBottom) {
+                isAutoScrolling = true;
+            }
+
+            lastScrollPosition = chatArea.scrollTop;
+        });
+
+        function renderVtaContent(element, content) {
+            const contentDiv = element.querySelector('.vta-text-content');
+            if (!contentDiv) return;
+
+            // Parse markdown immediately for each chunk
+            const htmlContent = marked.parse(content);
+            contentDiv.innerHTML = htmlContent;
+
+            // Re-render feather icons if any
+            feather.replace();
+        }
         async function loadSessionMessages(sessionId) {
             const container = document.getElementById('messages-container');
             container.innerHTML = '';
@@ -1255,6 +1956,7 @@
             const data = await fetch_data(`/api/sessions/${sessionId}/messages`);
             if (data.success) {
                 document.getElementById('current-session-title').textContent = data.title;
+                sessionTopicSet = data.topic_set || false;  // Update topic state
                 data.messages.forEach(msg => {
                     const el = createMessageElement(msg.sender, msg.content, msg.emotion);
                     container.appendChild(el);
@@ -1330,13 +2032,18 @@
         }
 
         async function startNewSession() {
+            // Create new session without prompting for name
             const data = await fetch_data('/api/sessions/new', 'POST', {});
             if (data.success) {
                 currentConversationId = data.conversation_id;
+                sessionTopicSet = false;  // Reset topic flag for new session
                 document.getElementById('messages-container').innerHTML = '';
+
+                // Display combined welcome message
                 const welcomeEl = createMessageElement('vta', data.welcome_message);
                 document.getElementById('messages-container').appendChild(welcomeEl);
                 renderVtaContent(welcomeEl, data.welcome_message);
+
                 document.getElementById('current-session-title').textContent = data.title;
                 fetchRecentSessions();
                 scrollToBottom();
@@ -1361,6 +2068,32 @@
             document.getElementById('messages-container').appendChild(loadingEl);
             scrollToBottom();
 
+            // Check if this is the first message (topic setting)
+            if (!sessionTopicSet) {
+                // Set the session topic
+                const topicData = await fetch_data(`/api/sessions/${currentConversationId}/set-topic`, 'POST', {
+                    topic: message
+                });
+
+                document.getElementById('vta-loading-indicator')?.remove();
+
+                if (topicData.success) {
+                    sessionTopicSet = true;
+                    document.getElementById('current-session-title').textContent = topicData.title;
+
+                    // Display acknowledgment
+                    const ackEl = createMessageElement('vta', topicData.acknowledgment);
+                    document.getElementById('messages-container').appendChild(ackEl);
+                    renderVtaContent(ackEl, topicData.acknowledgment);
+                    scrollToBottom();
+                    fetchRecentSessions();
+                } else {
+                    alert('Failed to set topic: ' + topicData.message);
+                }
+                return;
+            }
+
+            // Normal chat message
             const data = await fetch_data('/api/chat', 'POST', {
                 message: message,
                 conversation_id: currentConversationId,
@@ -1374,17 +2107,22 @@
                 document.getElementById('messages-container').appendChild(vtaEl);
 
                 const contentDiv = vtaEl.querySelector('.vta-text-content');
-                contentDiv.textContent = '';
+                contentDiv.innerHTML = '';
 
                 let charIndex = 0;
+                let currentText = '';
                 const typingInterval = setInterval(() => {
                     if (charIndex < vtaMessage.length) {
-                        contentDiv.textContent += vtaMessage.charAt(charIndex);
+                        currentText += vtaMessage.charAt(charIndex);
+                        // Parse markdown in real-time as text streams
+                        contentDiv.innerHTML = marked.parse(currentText);
                         charIndex++;
                         scrollToBottom();
                     } else {
                         clearInterval(typingInterval);
-                        renderVtaContent(vtaEl, vtaMessage);
+                        // Final render to ensure everything is properly formatted
+                        contentDiv.innerHTML = marked.parse(vtaMessage);
+                        feather.replace();
                         scrollToBottom();
                     }
                 }, 15);
@@ -1407,6 +2145,11 @@
                 const emotion = data.emotion || "Undetected";
                 document.getElementById('detected-emotion').textContent = emotion;
                 currentEmotion = emotion;
+
+                // Trigger box breathing for Happy emotion (testing - will change to stress detection)
+                if (emotion === 'Happy') {
+                    startBreathingExercise();
+                }
 
                 // Feedback Banner
                 const banner = document.getElementById('emotion-feedback-banner');
@@ -1494,9 +2237,21 @@
 
                 populateProfileSummary();
 
-                document.getElementById('modal-summary-content').querySelector('.space-y-4')?.classList.add('hidden');
+                // Show the modal
                 document.getElementById('profile-modal').classList.remove('hidden');
                 feather.replace();
+            });
+
+            // Send message button and Enter key listeners
+            document.getElementById('send-message-btn').addEventListener('click', () => {
+                const message = document.getElementById('user-input').value;
+                sendMessage(message);
+            });
+
+            document.getElementById('user-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage(document.getElementById('user-input').value);
+                }
             });
 
             // Start webcam button
