@@ -27,15 +27,12 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize database with the app.py
 db.init_app(app)
 
-# Wrap Flask app with SocketIO - CORS enabled
-# Using eventlet for asynchronous support for real-time video/audio streams
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Function to create database tables
 def create_db():
     with app.app_context():
         db.create_all()
-        # Check if badges exist; if not, seed them
         if not Badge.query.first():
             print("Seeding Gem Gallery with Difficulty Badges...")
             badges = [
