@@ -28,8 +28,8 @@ EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surpri
 # --- GLOBAL MODEL INITIALIZATION ---
 FACE_CLASSIFIER = None
 VIDEO_CLASSIFIER = None
-EMOTION_BUFFER = deque(maxlen=60)   # ~4 seconds at 15 FPS
-STRESS_BUFFER = deque(maxlen=60)
+EMOTION_BUFFER = deque(maxlen=15)   # ~4 seconds at 15 FPS
+STRESS_BUFFER = deque(maxlen=15)
 
 try:
     # Load the pre-trained model and cascade classifier using relative paths
@@ -201,15 +201,25 @@ def analyze_video_frame_with_stress(base64_frame: str):
         # Clamp between 0 and 1
         stress_index = max(0, min(1, stress_index))
 
-        # ---- Classification ----
-        if stress_index < 0.35:
-            stress_level = "Calm"
-        elif stress_index < 0.65:
-            stress_level = "Light Stress"
-        else:
-            stress_level = "High Stress"
+        # Store current stress index
+        STRESS_BUFFER.append(stress_index)
 
-        return emotion, stress_level
+        # Compute rolling mean stress
+        if len(STRESS_BUFFER) > 0:
+            mean_stress = sum(STRESS_BUFFER) / len(STRESS_BUFFER)
+        else:
+            mean_stress = stress_index
+
+        # ---- Classification based on mean ----
+        if mean_stress < 0.3:
+            final_stress = "Calm"
+        elif mean_stress < 0.6:
+            final_stress = "Light Stress"
+        else:
+            final_stress = "High Stress"
+
+        return final_stress
+
 
 
     except Exception as e:
@@ -230,7 +240,8 @@ if __name__ == "__main__":
         jpg_as_text = base64.b64encode(buffer).decode('utf-8')
         base64_frame = "data:image/jpeg;base64," + jpg_as_text
 
-        emotion, stress = analyze_video_frame_with_stress(base64_frame)
+        stress = analyze_video_frame_with_stress(base64_frame)
+        emotion = analyze_video_frame(base64_frame)
 
         SESSION_EMOTION_BUFFER.append(emotion)
         SESSION_STRESS_BUFFER.append(stress)
@@ -255,4 +266,5 @@ if __name__ == "__main__":
 
         print("Dominant Emotion:", final_emotion)
         print("Dominant Stress Level:", final_stress)
+        
 

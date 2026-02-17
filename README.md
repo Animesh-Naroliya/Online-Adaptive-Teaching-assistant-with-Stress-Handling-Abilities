@@ -2,7 +2,7 @@
 
 ## ✨ Overview: The Future of Personalized Learning
 
-The **Emotion-Aware Virtual Teaching Assistant (EVTA)** is a pioneering system designed to bridge the emotional gap in online education. We move beyond standard chatbots by integrating real-time **multimodal emotion recognition**—combining facial expressions and voice cues—to create a truly personalized and supportive digital tutor.
+The **Emotion-Aware Virtual Teaching Assistant (EVTA)** is a pioneering system designed to bridge the emotional gap in online education. We move beyond standard chatbots by integrating real-time **facial emotion recognition** to create a truly personalized and supportive digital tutor.
 
 By understanding a student's cognitive and emotional state (e.g., **confusion, frustration, focus, confidence**), the EVTA dynamically adjusts its teaching style, timing interventions, and optimizing the learning path to maximize comprehension and minimize dropout rates.
 
@@ -10,14 +10,14 @@ By understanding a student's cognitive and emotional state (e.g., **confusion, f
 
 ---
 
-## 🚀 Key Features & Multimodal Intelligence
+## 🚀 Key Features & Emotion Intelligence
 
-Our assistant relies on a robust, two-pronged sensory approach for superior accuracy:
+Our assistant relies on a robust facial expression analysis approach for emotion detection:
 
-### 👁️ Visual & Auditory Sensing
+### 👁️ Visual Sensing
 
-* **Real-time Emotion Detection:** Utilizes deep learning models (**DeepFace for visual, Librosa for audio**) to process streams from the webcam and microphone, detecting granular emotional states (e.g., Happy, Sad, Confused, Frustrated).
-* **Multimodal Fusion Logic:** Combines facial and voice inputs for a reliable, context-aware assessment. This ensures the assistant's response is accurate even when one signal is noisy (e.g., background noise in audio is overruled by focused facial cues).
+* **Real-time Emotion Detection:** Utilizes deep learning models (**DeepFace**) to process video streams from the webcam, detecting granular emotional states (e.g., Happy, Sad, Confused, Frustrated, Neutral).
+* **Facial Expression Analysis:** Analyzes facial expressions in real-time to provide context-aware emotional assessment of the student's learning state.
 
 ### 💡 Adaptive Pedagogy
 
@@ -43,7 +43,7 @@ You will need the following installed on your system:
 
 * **Python 3.8+**
 * **Git**
-* **A stable webcam and microphone**
+* **A stable webcam**
 
 ### Installation Steps
 
@@ -68,7 +68,7 @@ You will need the following installed on your system:
     ```bash
     pip install -r requirements.txt
     ```
-    *(Note: This includes libraries like OpenCV, DeepFace, Librosa, and the required LLM interface/API access.)*
+    *(Note: This includes libraries like OpenCV, DeepFace, and the required LLM interface/API access.)*
 
 ---
 
