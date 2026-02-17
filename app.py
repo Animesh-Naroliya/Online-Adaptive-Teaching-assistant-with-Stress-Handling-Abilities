@@ -10,6 +10,7 @@ from werkzeug.security import check_password_hash
 from datetime import datetime
 
 # --- EXTERNAL MODULE IMPORTS ---
+from groq import Groq
 from groqChatbot import llm_chatbot 
 from VoiceAnalysis.speechAnalyzer import analyze_audio_blob 
 from video_analysis.video_analysis import analyze_video_frame
