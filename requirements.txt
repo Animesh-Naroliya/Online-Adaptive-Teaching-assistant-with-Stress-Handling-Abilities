@@ -30,11 +30,10 @@ langchain-groq
 
 # Dependencies for Facial-Analysis (FER)
 tensorflow==2.16.1
-numpy==1.24.4
+numpy>=1.26.0
 tf-keras==2.16.0
 opencv-python==4.9.0.80
 
 # Stress detection
 mediapipe==0.10.32
 keras==3.12.1
-collections
