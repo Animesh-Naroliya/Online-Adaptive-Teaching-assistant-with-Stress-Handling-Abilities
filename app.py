@@ -7,7 +7,9 @@ from dotenv import load_dotenv
 from database import db, User, Conversation, Message, Badge
 from groq import Groq
 from groqChatbot import llm_chatbot 
-from video_analysis.video_analysis import analyze_video_frame
+# from video_analysis.video_analysis import analyze_video_frame
+from video_analysis.video_analysis import analyze_video_frame_with_stress
+
 import pyttsx3
 import threading
 
@@ -535,11 +537,16 @@ def handle_video_stream(data):
     base64_frame = data.get('frame')
     
     if base64_frame:
-        detected_emotion = analyze_video_frame(base64_frame)
+        emotion, stress = analyze_video_frame_with_stress(base64_frame)
     else:
-        detected_emotion = 'Neutral'
+        emotion = 'Neutral'
+        stress = 'Calm'
         
-    emit('video_response', {'emotion': detected_emotion})
+    emit('video_response', {
+        'emotion': emotion,
+        'stress': stress
+    })
+
 
 
 if __name__ == '__main__':
