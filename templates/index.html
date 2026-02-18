@@ -2185,8 +2185,9 @@
             // Listener for emotion updates from the backend
             socket.on('video_response', (data) => {
                 const emotion = data.emotion || "Undetected";
-                document.getElementById('detected-emotion').textContent = emotion;
-                document.getElementById('detected-stress').textContent = stress;
+                const stress = data.stress || "Calm";
+                document.getElementById('detected-emotion').textContent = `Emotion: ${emotion}`;
+                document.getElementById('detected-stress').textContent = `Stress: ${stress}`;
                 currentEmotion = emotion;
 
                 // Trigger box breathing for Happy emotion (testing - will change to stress detection)
