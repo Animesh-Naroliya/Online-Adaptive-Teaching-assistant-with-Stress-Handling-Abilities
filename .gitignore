@@ -4,4 +4,4 @@ __pycache__/
 venv/
 .env
 instance/
-instance/*
+instance/site.db
