@@ -2232,7 +2232,7 @@
                 document.getElementById('start-webcam-btn').textContent = 'Streaming...';
                 videoElement.srcObject = stream;
 
-                // Stream video frames to Flask-SocketIO every 5000ms (5 seconds)
+                // Stream video frames to Flask-SocketIO every 1000ms (1 second)
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
 
@@ -2244,7 +2244,7 @@
                         const dataURL = canvas.toDataURL('image/jpeg'); // Send image data
                         socket.emit('video_stream', { frame: dataURL });
                     }
-                }, 2000);
+                }, 1000);
 
             } catch (err) {
                 console.error("Error accessing webcam: ", err);
