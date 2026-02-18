@@ -29,7 +29,8 @@ EMOTION_LABELS = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surpri
 FACE_CLASSIFIER = None
 VIDEO_CLASSIFIER = None
 EMOTION_BUFFER = deque(maxlen=15)   # ~4 seconds at 15 FPS
-STRESS_BUFFER = deque(maxlen=15)
+# Faster UI reaction: with 1s frame interval, this smooths over ~5 seconds.
+STRESS_BUFFER = deque(maxlen=5)
 
 try:
     # Load the pre-trained model and cascade classifier using relative paths
@@ -265,4 +266,3 @@ if __name__ == "__main__":
         print("Dominant Emotion:", final_emotion)
         print("Dominant Stress Level:", final_stress)
         
-
