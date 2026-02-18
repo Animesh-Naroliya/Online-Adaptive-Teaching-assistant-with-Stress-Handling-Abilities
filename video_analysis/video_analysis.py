@@ -218,8 +218,7 @@ def analyze_video_frame_with_stress(base64_frame: str):
         else:
             final_stress = "High Stress"
 
-        return final_stress
-
+        return emotion,final_stress
 
 
     except Exception as e:
@@ -240,8 +239,7 @@ if __name__ == "__main__":
         jpg_as_text = base64.b64encode(buffer).decode('utf-8')
         base64_frame = "data:image/jpeg;base64," + jpg_as_text
 
-        stress = analyze_video_frame_with_stress(base64_frame)
-        emotion = analyze_video_frame(base64_frame)
+        emotion, stress = analyze_video_frame_with_stress(base64_frame)
 
         SESSION_EMOTION_BUFFER.append(emotion)
         SESSION_STRESS_BUFFER.append(stress)

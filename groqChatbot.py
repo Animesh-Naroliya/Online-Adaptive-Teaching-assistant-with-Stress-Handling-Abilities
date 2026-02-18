@@ -25,16 +25,48 @@ class LLM_Chatbot:
     def _generate_system_prompt(self, user_data: Dict[str, Any]) -> str:
 
         facial_emotion = user_data.get('facial_emotion', 'Neutral')
+        stress_level = user_data.get('stress_level', 'Calm')
         context = user_data.get('context', 'a student')
         likes = user_data.get('likes', 'learning')
         session_topic = user_data.get('session_topic', 'general learning')
+        facial_emotion = facial_emotion.upper()
+        stress_level = stress_level.upper()
 
-        if facial_emotion.upper() != 'NEUTRAL':
-             current_state = f"The student is showing CONFLICT: Face is {facial_emotion.upper()}."
-             adaptation_focus = "Confusion"
+        # ----- Combined Emotion + Stress Adaptation -----
+        current_state = (
+            f"Facial Emotion: {facial_emotion}, "
+            f"Stress Level: {stress_level}."
+        )
+
+        # -------- STRESS decides learning intensity --------
+        if stress_level == "HIGH STRESS":
+            stress_focus = "High Stress"
+
+        elif stress_level == "LIGHT STRESS":
+            stress_focus = "Light Stress"
+
         else:
-             current_state = "The student is currently Neutral."
-             adaptation_focus = 'Neutral'
+            stress_focus = "Calm"
+
+
+        # -------- EMOTION decides tone & engagement --------
+        if facial_emotion in ["SAD", "ANGRY", "CONFUSION"]:
+            emotion_focus = "Emotional Support"
+
+        elif facial_emotion == "BOREDOM":
+            emotion_focus = "Engagement Boost"
+
+        elif facial_emotion in ["HAPPY", "FOCUSED"]:
+            emotion_focus = "Advanced Learning"
+
+        else:
+            emotion_focus = "Neutral"
+
+
+        # Final combined adaptation
+        adaptation_focus = f"{stress_focus} + {emotion_focus}"
+
+    
 
         system_prompt = (
             f"You are the **Emotion-Aware Virtual Teaching Assistant (VTA)**: an expert, dynamic, and highly engaging educator. "
@@ -51,8 +83,29 @@ class LLM_Chatbot:
             f"* **Current Emotional State**: **{current_state}**\n"
             f"\n\n---"
             f"\n\n**Adaptive Pedagogy & Tone Matrix:**\n"
-            f"Adapt your tone and approach instantaneously based on the emotional focus ({adaptation_focus}):\n"
+            f"Adapt your tone and approach instantaneously based on the learner's emotional and stress state ({adaptation_focus}):\n"
             f"\n"
+            f"\nPRIMARY RULE:\n"
+            f"• Stress controls explanation difficulty.\n"
+            f"• Emotion controls communication tone.\n"
+
+            f"\nSTRESS ADAPTATION:\n"
+            f"\nHIGH STRESS:\n"
+            f"- Pause complex explanations.\n"
+            f"- Use very simple micro-learning steps.\n"
+            f"- Provide reassurance.\n"
+            f"- Offer optional short break or fun mini activity.\n"
+
+            f"\nLIGHT STRESS:\n"
+            f"- Simplify explanation moderately.\n"
+            f"- Provide step-by-step guidance.\n"
+            f"- Encourage confidence.\n"
+
+            f"\nCALM:\n"
+            f"- Provide full explanations.\n"
+            f"- Introduce deeper or advanced knowledge.\n"
+            f"\n"
+
             f"* **If Sad, Angry, or Confusion** 😔: Adopt a gentle, highly supportive, and empathetic tone. Immediately simplify the core concept and focus on encouragement, offering a small, digestible step forward. Conclude by asking a clarifying question to address the misunderstanding directly.\n"
             f"* **If Boredom** 😴: Shift to an energetic, stimulating, and challenging tone. The explanation must be dynamic and immediately include a surprising fact, a captivating real-world analogy, or a mini-challenge related to their **Likes**.\n"
             f"* **If Happy or Focused** 😄: Maintain a positive, stimulating, and academic tone. Congratulate their focus, and introduce slightly more complex layers of the current topic or supplementary, advanced context to deepen their expertise.\n"
