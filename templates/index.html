@@ -969,6 +969,7 @@
         const API_BASE = 'http://127.0.0.1:5000/api';
         let currentConversationId = null;
         let currentEmotion = "Neutral";
+        let currentStress = "Calm";
         let sessionTopicSet = false;  // Track if topic has been set for current session
         let socket;
         let mediaRecorder;
@@ -2139,7 +2140,8 @@
             const data = await fetch_data('/api/chat', 'POST', {
                 message: message,
                 conversation_id: currentConversationId,
-                emotion_detected: currentEmotion
+                emotion_detected: currentEmotion,
+                stress_level: currentStress
             });
 
             document.getElementById('vta-loading-indicator')?.remove();
@@ -2185,16 +2187,17 @@
             // Listener for emotion updates from the backend
             socket.on('video_response', (data) => {
                 const emotion = data.emotion || "Undetected";
-                const stress = data.stress || "Calm";
+                const stress = data.stress || "Undetected";
                 document.getElementById('detected-emotion').textContent = `Emotion: ${emotion}`;
                 document.getElementById('detected-stress').textContent = `Stress: ${stress}`;
                 currentEmotion = emotion;
+                currentStress = stress;
 
                 // Trigger box breathing for Happy emotion (testing - will change to stress detection)
                 //if (emotion === 'Happy') {
                 //    startBreathingExercise();
                 //}
-                if (stress === 'High Stress') {
+                if (stress === 'High Stress' || stress === 'Low Stress') {
                     startBreathingExercise();
                 }
                 
