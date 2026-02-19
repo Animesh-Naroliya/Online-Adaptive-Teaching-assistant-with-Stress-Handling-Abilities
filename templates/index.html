@@ -2297,18 +2297,6 @@
                 feather.replace();
             });
 
-            // Send message button and Enter key listeners
-            document.getElementById('send-message-btn').addEventListener('click', () => {
-                const message = document.getElementById('user-input').value;
-                sendMessage(message);
-            });
-
-            document.getElementById('user-input').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendMessage(document.getElementById('user-input').value);
-                }
-            });
-
             // Start webcam button
             document.getElementById('start-webcam-btn').addEventListener('click', startWebcamStream);
 
