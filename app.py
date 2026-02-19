@@ -275,6 +275,7 @@ def chat_message():
     message_content = data.get('message')
     conversation_id = data.get('conversation_id')
     emotion_detected = data.get('emotion_detected') 
+    stress_level = data.get('stress_level') or 'Calm'
 
     if not all([message_content, conversation_id]):
         return jsonify({'success': False, 'message': 'Missing message or conversation ID'}), 400
@@ -304,6 +305,7 @@ def chat_message():
         'context': context_text,
         'likes': likes_text,
         'facial_emotion': emotion_detected,
+        'stress_level': stress_level,
         'session_topic': session_topic
     }
 
