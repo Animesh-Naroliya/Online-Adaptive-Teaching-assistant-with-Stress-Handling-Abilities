@@ -312,6 +312,8 @@ def chat_message_stream():
     _conv_id = conversation_id
 
     def generate():
+        # Send heartbeat immediately to flush Werkzeug's buffer — removes "..." right away
+        yield ": heartbeat\n\n"
         full_response = ""
         try:
             for chunk in llm_chatbot.get_response_stream(conversation_id, message_content, user_data):
@@ -335,7 +337,7 @@ def chat_message_stream():
             yield f"data: {json.dumps({'done': True, 'message_id': vta_message.id})}\n\n"
 
     return Response(stream_with_context(generate()), mimetype='text/event-stream',
-                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no', 'Transfer-Encoding': 'chunked'})
 
 
 @app.route('/api/chat', methods=['POST'])

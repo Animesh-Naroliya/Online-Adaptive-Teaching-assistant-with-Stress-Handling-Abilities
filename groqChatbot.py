@@ -2,6 +2,7 @@ import os
 import json
 from typing import Dict, Any, List, Optional, Generator
 from dotenv import load_dotenv
+from groq import Groq
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
@@ -127,28 +128,37 @@ class LLM_Chatbot:
         self._trim_history_buffer(history)
         return ai_text
 
-    # FIX 2: Streaming method — yields text chunks as they arrive
+    # FIX 2: Streaming using native Groq client — fastest possible time-to-first-token
     def get_response_stream(self, conversation_id: int, user_message: str, user_data: Dict[str, Any]) -> Generator[str, None, str]:
         session_id = str(conversation_id)
         system_text = self._get_system_prompt(session_id, user_data)  # FIX 3
-        system_message_lc = SystemMessage(content=system_text)
         history = self._get_session_history(session_id)
         history.add_user_message(user_message)
 
+        # Build messages list for native Groq API (avoids LangChain overhead)
+        messages = [{"role": "system", "content": system_text}]
+        for msg in history.messages[:-1]:  # exclude the just-added user message
+            role = "user" if msg.type == "human" else "assistant"
+            messages.append({"role": role, "content": msg.content})
+        messages.append({"role": "user", "content": user_message})
+
         full_response = ""
         try:
-            for chunk in self.chain.stream(
-                {
-                    "input": user_message,
-                    "system_message": [system_message_lc],
-                    "history": history.messages[:-1]
-                },
-                config={}
-            ):
-                full_response += chunk
-                yield chunk
+            # Use the native Groq client directly for minimum latency
+            groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+            stream = groq_client.chat.completions.create(
+                model=os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant"),
+                messages=messages,
+                temperature=0.7,
+                stream=True
+            )
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content
+                if delta:
+                    full_response += delta
+                    yield delta
         except Exception as e:
-            print(f"Groq Streaming Error: {e}")
+            print(f"Groq Native Streaming Error: {e}")
             fallback = "I'm having trouble connecting right now. Please try again."
             full_response = fallback
             yield fallback
