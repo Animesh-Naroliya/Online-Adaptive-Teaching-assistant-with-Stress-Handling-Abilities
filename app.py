@@ -270,7 +270,6 @@ def generate_quiz():
 
 # CHATBOT & SESSION API
 
-# FIX 2: Streaming endpoint — sends tokens to the browser as they arrive (SSE)
 @app.route('/api/chat/stream', methods=['POST'])
 @login_required
 def chat_message_stream():
@@ -312,13 +311,12 @@ def chat_message_stream():
     _conv_id = conversation_id
 
     def generate():
-        # Send heartbeat immediately to flush Werkzeug's buffer — removes "..." right away
+        # Send heartbeat immediately to flush Werkzeug's buffer
         yield ": heartbeat\n\n"
         full_response = ""
         try:
             for chunk in llm_chatbot.get_response_stream(conversation_id, message_content, user_data):
                 full_response += chunk
-                # SSE format: "data: <text>\n\n"
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
         except Exception as e:
             print(f"Stream generation error: {e}")
@@ -367,12 +365,10 @@ def chat_message():
     db.session.add(user_message)
     db.session.commit()
 
-    # Call LLM API 
     context_text = g.user.context if g.user.context else "a student"
     likes_text = g.user.likes if g.user.likes else ""
     session_topic = conversation.topic if conversation.topic else "general learning"
-    llm_response_content = None 
-
+    
     user_data = {
         'username': g.user.username,
         'context': context_text,
@@ -395,13 +391,11 @@ def chat_message():
             logf.write(f"{datetime.now()}: {error_msg}\n")
         llm_response_content = None 
 
-    # START OF LLM FALLBACK LOGIC
     if not llm_response_content or llm_response_content.isspace() or 'I apologize, ' in llm_response_content:
         llm_response_content = (
             f"It seems like we're experiencing a technical issue. Don't worry, let's try to resolve this together. The error message is indicating a problem with the LLM API configuration or connectivity. I'm here to help you navigate through any challenges that come up. How would you like to proceed?"
         )
     
-    # Save VTA Response
     vta_message = Message(
         conversation_id=conversation_id,
         sender='vta',
@@ -466,11 +460,39 @@ def set_session_topic(session_id):
     conversation.title = f"{topic[:50]}..." if len(topic) > 50 else topic
     db.session.commit()
     
-    # Send acknowledgment message
+    # Save the user's very first message to the database
+    user_message = Message(
+        conversation_id=session_id,
+        sender='user',
+        content=topic,
+        emotion_detected='Neutral', 
+        stress_level='Calm'
+    )
+    db.session.add(user_message)
+    db.session.commit()
+
+    # Send this first message to your AI so it uses its new brain!
+    user_data = {
+        'username': g.user.username,
+        'context': g.user.context if g.user.context else 'a student',
+        'likes': g.user.likes if g.user.likes else '',
+        'facial_emotion': 'Neutral',
+        'stress_level': 'Calm',
+        'session_topic': topic
+    }
+    
+    try:
+        # Generate a real response using your new prompt
+        ai_reply = llm_chatbot.get_response(session_id, topic, user_data)
+    except Exception as e:
+        print(f"Error getting AI response for topic setup: {e}")
+        ai_reply = f"Got it, {g.user.username}. Let's get started."
+
+    # Save the AI's actual response
     ack_message = Message(
         conversation_id=session_id,
         sender='vta',
-        content=f"Perfect! Let's dive into **{topic}**. I'm here to help you learn and understand this topic thoroughly. What would you like to know first?"
+        content=ai_reply
     )
     db.session.add(ack_message)
     db.session.commit()
@@ -479,7 +501,7 @@ def set_session_topic(session_id):
         'success': True,
         'topic': topic,
         'title': conversation.title,
-        'acknowledgment': ack_message.content
+        'acknowledgment': ai_reply
     }), 200
 
 @app.route('/api/sessions/new', methods=['POST'])
@@ -496,11 +518,16 @@ def new_session():
     db.session.add(new_conversation)
     db.session.commit()
     
-    # Send combined welcome and topic question message
+    # Match the new relaxed, intelligent AI persona
+    welcome_text = (
+        f"Hello {g.user.username}.\n\n"
+        f"I'm ready whenever you are. Are we diving into a specific topic today, or did you just want to chat?"
+    )
+
     welcome_message = Message(
         conversation_id=new_conversation.id,
         sender='vta',
-        content=f"Hello {g.user.username}! 👋 Welcome to your new learning session. I'm your Emotion-Aware Virtual Teaching Assistant.\n\nWhat would you like to study today? Please tell me the topic or subject you want to focus on in this session."
+        content=welcome_text
     )
     db.session.add(welcome_message)
     db.session.commit()
@@ -540,8 +567,34 @@ def get_session_messages(session_id):
         'topic_set': conversation.topic is not None
     }), 200
 
+# ==========================================
+# 🔴 NEW ROUTE: DELETE A CHAT SESSION 🔴
+# ==========================================
+@app.route('/api/sessions/<int:session_id>', methods=['DELETE'])
+@login_required
+def delete_session(session_id):
+    # Find the conversation ensuring it belongs to the logged-in user
+    conversation = Conversation.query.filter_by(id=session_id, user_id=g.user.id).first()
+    
+    if not conversation:
+        return jsonify({'success': False, 'message': 'Conversation not found'}), 404
+        
+    try:
+        # Delete all messages associated with this conversation first
+        Message.query.filter_by(conversation_id=session_id).delete()
+        
+        # Delete the conversation itself
+        db.session.delete(conversation)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Chat deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting chat: {e}")
+        return jsonify({'success': False, 'message': 'Failed to delete chat'}), 500
+# ==========================================
+
 # Text-to-Speech Endpoint with pyttsx3
-# Global TTS engine and control
 tts_engine = None
 tts_lock = threading.Lock()
 is_speaking = False
@@ -564,10 +617,8 @@ def text_to_speech_speak():
         if not text:
             return jsonify({'success': False, 'message': 'No text provided'}), 400
         
-        # Initialize engine if needed
         init_tts_engine()
         
-        # Start speaking in a thread
         def speak():
             global is_speaking
             with tts_lock:
@@ -596,12 +647,10 @@ def text_to_speech_stop():
     global is_speaking, tts_engine
     try:
         if is_speaking and tts_engine:
-            # Force stop the engine
             try:
                 tts_engine.stop()
             except:
                 pass
-            # Reinitialize engine for next use
             tts_engine = None
             is_speaking = False
         return jsonify({'success': True}), 200
@@ -625,8 +674,6 @@ def handle_video_stream(data):
         'emotion': emotion,
         'stress': stress
     })
-
-
 
 if __name__ == '__main__':
     create_db()
