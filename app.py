@@ -289,7 +289,8 @@ def chat_message():
         conversation_id=conversation_id,
         sender='user',
         content=message_content,
-        emotion_detected=emotion_detected
+        emotion_detected=emotion_detected,
+        stress_level=stress_level
     )
     db.session.add(user_message)
     db.session.commit()
@@ -316,7 +317,10 @@ def chat_message():
             user_data
         )
     except Exception as e:
-        print(f"Global Chatbot Execution Failed: {e}. Falling back to generic response.")
+        error_msg = f"Global Chatbot Execution Failed: {e}"
+        print(error_msg)
+        with open("error_log.txt", "a") as logf:
+            logf.write(f"{datetime.now()}: {error_msg}\n")
         llm_response_content = None 
 
     # START OF LLM FALLBACK LOGIC
@@ -452,6 +456,7 @@ def get_session_messages(session_id):
         'sender': m.sender,
         'content': m.content,
         'emotion': m.emotion_detected,
+        'stress': m.stress_level,
         'timestamp': m.timestamp.strftime("%Y-%m-%d %H:%M:%S")
     } for m in messages]
 

@@ -85,6 +85,7 @@ class Message(db.Model):
     sender = db.Column(db.String(10), nullable=False)  # 'user' or 'vta'
     content = db.Column(db.Text, nullable=False)
     emotion_detected = db.Column(db.String(50), nullable=True) # Emotion recorded at the time of message
+    stress_level = db.Column(db.String(50), nullable=True) # Stress level recorded at the time of message
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):

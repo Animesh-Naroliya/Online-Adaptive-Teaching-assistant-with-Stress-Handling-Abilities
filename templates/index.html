@@ -881,12 +881,7 @@
 
             <div id="chat-area" class="flex-grow overflow-y-auto p-6 pb-24 space-y-4">
                 <div id="messages-container" class="max-w-4xl mx-auto">
-                    <div class="flex justify-start">
-                        <div class="bg-blue-100 dark:bg-blue-800 p-3 rounded-xl max-w-lg text-sm shadow">
-                            <p class="text-blue-900 dark:text-blue-100 font-medium">Welcome! I'm your Emotion-Aware VTA.
-                                How can I help you learn today?</p>
-                        </div>
-                    </div>
+
                 </div>
             </div>
 
@@ -894,7 +889,10 @@
                 class="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                 <div class="max-w-4xl mx-auto flex items-center space-x-3">
 
-                    <!-- Microphone button removed as per user request -->
+                    <button id="mic-btn"
+                        class="p-3 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors duration-200 shadow-md">
+                        <i data-feather="mic" class="w-6 h-6"></i>
+                    </button>
 
                     <input type="text" id="user-input" placeholder="Ask VTA a question or type your prompt..."
                         class="flex-grow px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -1306,56 +1304,62 @@
                 });
         }
         // Function to populate the profile summary
-        function populateProfileSummary() {
-            const name = window.userData?.name || document.getElementById('summary-name').textContent || 'Not provided';
-            const username = window.userData?.username || document.getElementById('summary-username').textContent || 'Not provided';
-            const email = window.userData?.email || document.getElementById('summary-email').textContent || 'Not provided';
+        function populateProfileSummary(container = document) {
+            const name = window.userData?.name || container.querySelector('#summary-name')?.textContent || 'Not provided';
+            const username = window.userData?.username || container.querySelector('#summary-username')?.textContent || 'Not provided';
+            const email = window.userData?.email || container.querySelector('#summary-email')?.textContent || 'Not provided';
 
-            document.getElementById('summary-name').textContent = name;
-            document.getElementById('summary-username').textContent = username;
-            document.getElementById('summary-email').textContent = email;
+            if (container.querySelector('#summary-name')) container.querySelector('#summary-name').textContent = name;
+            if (container.querySelector('#summary-username')) container.querySelector('#summary-username').textContent = username;
+            if (container.querySelector('#summary-email')) container.querySelector('#summary-email').textContent = email;
 
-            const contextDisplay = document.getElementById('context-display');
-            switch (window.userContext) {
-                case 'school': contextDisplay.textContent = "In School - Still learning the basics"; break;
-                case 'college': contextDisplay.textContent = "In College/University - Expanding my knowledge"; break;
-                case 'professional': contextDisplay.textContent = "A Working Professional - Applying my skills daily"; break;
-                case 'exploring': contextDisplay.textContent = "Just Exploring - Curious about possibilities"; break;
-                default: contextDisplay.textContent = "Not specified"; break;
+            const contextDisplay = container.querySelector('#context-display');
+            if (contextDisplay) {
+                switch (window.userContext) {
+                    case 'school': contextDisplay.textContent = "In School - Still learning the basics"; break;
+                    case 'college': contextDisplay.textContent = "In College/University - Expanding my knowledge"; break;
+                    case 'professional': contextDisplay.textContent = "A Working Professional - Applying my skills daily"; break;
+                    case 'exploring': contextDisplay.textContent = "Just Exploring - Curious about possibilities"; break;
+                    default: contextDisplay.textContent = "Not specified"; break;
+                }
             }
 
-            const passionsList = document.getElementById('passions-list');
-            passionsList.innerHTML = '';
+            const passionsList = container.querySelector('#passions-list');
+            if (passionsList) {
+                passionsList.innerHTML = '';
 
-            if (window.userPreferences && window.userPreferences.likes.length > 0) {
-                window.userPreferences.likes.forEach(like => {
+                if (window.userPreferences && window.userPreferences.likes.length > 0) {
+                    window.userPreferences.likes.forEach(like => {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center text-gray-300';
+                        li.innerHTML = `<i data-feather="heart" class="w-4 h-4 mr-2 text-green-400"></i> ${like}`;
+                        passionsList.appendChild(li);
+                    });
+                } else {
                     const li = document.createElement('li');
-                    li.className = 'flex items-center text-gray-300';
-                    li.innerHTML = `<i data-feather="heart" class="w-4 h-4 mr-2 text-green-400"></i> ${like}`;
+                    li.className = 'flex items-center text-gray-400';
+                    li.innerHTML = `<i data-feather="minus" class="w-4 h-4 mr-2"></i> No preferences specified`;
                     passionsList.appendChild(li);
-                });
-            } else {
-                const li = document.createElement('li');
-                li.className = 'flex items-center text-gray-400';
-                li.innerHTML = `<i data-feather="minus" class="w-4 h-4 mr-2"></i> No preferences specified`;
-                passionsList.appendChild(li);
+                }
             }
 
-            const dislikesList = document.getElementById('dislikes-list');
-            dislikesList.innerHTML = '';
+            const dislikesList = container.querySelector('#dislikes-list');
+            if (dislikesList) {
+                dislikesList.innerHTML = '';
 
-            if (window.userPreferences && window.userPreferences.dislikes.length > 0) {
-                window.userPreferences.dislikes.forEach(dislike => {
+                if (window.userPreferences && window.userPreferences.dislikes.length > 0) {
+                    window.userPreferences.dislikes.forEach(dislike => {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center text-gray-300';
+                        li.innerHTML = `<i data-feather="x-circle" class="w-4 h-4 mr-2 text-red-400"></i> ${dislike}`;
+                        dislikesList.appendChild(li);
+                    });
+                } else {
                     const li = document.createElement('li');
-                    li.className = 'flex items-center text-gray-300';
-                    li.innerHTML = `<i data-feather="x-circle" class="w-4 h-4 mr-2 text-red-400"></i> ${dislike}`;
+                    li.className = 'flex items-center text-gray-400';
+                    li.innerHTML = `<i data-feather="minus" class="w-4 h-4 mr-2"></i> No dislikes specified`;
                     dislikesList.appendChild(li);
-                });
-            } else {
-                const li = document.createElement('li');
-                li.className = 'flex items-center text-gray-400';
-                li.innerHTML = `<i data-feather="minus" class="w-4 h-4 mr-2"></i> No dislikes specified`;
-                dislikesList.appendChild(li);
+                }
             }
 
             feather.replace();
@@ -1371,8 +1375,7 @@
                 document.getElementById('quote-page').classList.add('hidden');
                 document.getElementById('main-page').classList.remove('hidden');
 
-                // Initialize VTA and check session
-                initializeVTA();
+
                 checkLoginStatus();
             }, 3000);
         });
@@ -1921,7 +1924,7 @@
         }
         // --- CHAT & SESSION MANAGEMENT ---
 
-        function createMessageElement(sender, content, emotion = null) {
+        function createMessageElement(sender, content, emotion = null, stress = null) {
             const isVTA = sender === 'vta';
             const align = isVTA ? 'justify-start' : 'justify-end';
             const bgColor = isVTA ? 'bg-blue-100 dark:bg-blue-800' : 'bg-green-100 dark:bg-green-700';
@@ -1933,7 +1936,7 @@
             let contentHTML = `
                 <div class="${bgColor} p-3 rounded-xl max-w-lg text-sm shadow relative group">
                     <div class="${textColor} vta-text-content">${content}</div>
-                    ${emotion ? `<p class="text-xs mt-1 italic text-gray-500 dark:text-gray-400">Emotion: ${emotion}</p>` : ''}
+                    ${emotion ? `<p class="text-xs mt-1 italic text-gray-500 dark:text-gray-400">Emotion: ${emotion} ${stress ? `| Stress: ${stress}` : ''}</p>` : ''}
                     ${isVTA ? `<button onclick="speakText(this)" class="tts-button absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" title="Read aloud"><i data-feather="volume-2" class="w-4 h-4"></i></button>` : ''}
                 </div>
             `;
@@ -1942,7 +1945,7 @@
                 contentHTML = `
                     <div class="${bgColor} p-3 rounded-xl max-w-lg text-sm shadow">
                         <p class="${textColor}">${content}</p>
-                        ${emotion ? `<p class="text-xs mt-1 italic text-gray-500 dark:text-gray-400">Emotion: ${emotion}</p>` : ''}
+                        ${emotion ? `<p class="text-xs mt-1 italic text-gray-500 dark:text-gray-400">Emotion: ${emotion} ${stress ? `| Stress: ${stress}` : ''}</p>` : ''}
                     </div>
                 `;
             }
@@ -2001,7 +2004,7 @@
                 document.getElementById('current-session-title').textContent = data.title;
                 sessionTopicSet = data.topic_set || false;  // Update topic state
                 data.messages.forEach(msg => {
-                    const el = createMessageElement(msg.sender, msg.content, msg.emotion);
+                    const el = createMessageElement(msg.sender, msg.content, msg.emotion, msg.stress);
                     container.appendChild(el);
                     if (msg.sender === 'vta') {
                         renderVtaContent(el, msg.content);
@@ -2102,7 +2105,7 @@
             inputField.value = '';
 
             // Display user message immediately
-            const userEl = createMessageElement('user', message, currentEmotion);
+            const userEl = createMessageElement('user', message, currentEmotion, currentStress);
             document.getElementById('messages-container').appendChild(userEl);
             scrollToBottom();
 
@@ -2193,11 +2196,9 @@
                 currentEmotion = emotion;
                 currentStress = stress;
 
-                // Trigger box breathing for Happy emotion (testing - will change to stress detection)
-                //if (emotion === 'Happy') {
-                //    startBreathingExercise();
-                //}
-                if (stress === 'High Stress' || stress === 'Low Stress') {
+                // Trigger for box breathing
+                // Check if stress is high/light AND the modal is currently hidden
+                if ((stress === 'High Stress' || stress === 'Light Stress') && document.getElementById('breathing-modal').classList.contains('hidden')) {
                     startBreathingExercise();
                 }
 
@@ -2257,12 +2258,71 @@
 
         // --- GLOBAL SETUP ---
 
+        let recognition;
+        let isRecording = false;
+
+        function setupSpeechRecognition() {
+            if (!('webkitSpeechRecognition' in window)) {
+                console.log("Web Speech API not supported");
+                // Hide mic button if not supported
+                const micBtn = document.getElementById('mic-btn');
+                if (micBtn) micBtn.style.display = 'none';
+                return;
+            }
+
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = function () {
+                isRecording = true;
+                const micBtn = document.getElementById('mic-btn');
+                micBtn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+                micBtn.classList.add('bg-red-500', 'text-white', 'animate-pulse');
+            };
+
+            recognition.onend = function () {
+                isRecording = false;
+                const micBtn = document.getElementById('mic-btn');
+                micBtn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+                micBtn.classList.remove('bg-red-500', 'text-white', 'animate-pulse');
+            };
+
+            recognition.onresult = function (event) {
+                const transcript = event.results[0][0].transcript;
+                const inputField = document.getElementById('user-input');
+                inputField.value = transcript;
+                inputField.focus();
+            };
+
+            recognition.onerror = function (event) {
+                console.error("Speech recognition error", event.error);
+                isRecording = false;
+                const micBtn = document.getElementById('mic-btn');
+                micBtn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+                micBtn.classList.remove('bg-red-500', 'text-white', 'animate-pulse');
+            };
+
+            const micBtn = document.getElementById('mic-btn');
+            if (micBtn) {
+                micBtn.addEventListener('click', () => {
+                    if (isRecording) {
+                        recognition.stop();
+                    } else {
+                        recognition.start();
+                    }
+                });
+            }
+        }
+
         function initializeVTA() {
             console.log('Initializing VTA interface...');
             feather.replace();
             initializeSocketIO();
             loadUserProfileData();
             fetchRecentSessions();
+            setupSpeechRecognition();
 
             // Send message button
             document.getElementById('send-message-btn').addEventListener('click', () => {
@@ -2293,7 +2353,7 @@
                 const editLink = modalContent.querySelector('#edit-profile-link');
                 if (editLink) editLink.parentElement.remove();
 
-                populateProfileSummary();
+                populateProfileSummary(modalContent);
 
                 // Show the modal
                 document.getElementById('profile-modal').classList.remove('hidden');
