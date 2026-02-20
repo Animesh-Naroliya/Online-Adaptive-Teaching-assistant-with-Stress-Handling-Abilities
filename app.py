@@ -1,7 +1,8 @@
 import time 
 import os
+import json
 from datetime import datetime
-from flask import Flask, jsonify, request, session, render_template, g
+from flask import Flask, jsonify, request, session, render_template, g, Response, stream_with_context
 from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv
 from database import db, User, Conversation, Message, Badge
@@ -267,7 +268,76 @@ def generate_quiz():
         print(f"Quiz Server Error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# CHATBOT & SESSION API 
+# CHATBOT & SESSION API
+
+# FIX 2: Streaming endpoint — sends tokens to the browser as they arrive (SSE)
+@app.route('/api/chat/stream', methods=['POST'])
+@login_required
+def chat_message_stream():
+    data = request.get_json()
+    message_content = data.get('message')
+    conversation_id = data.get('conversation_id')
+    emotion_detected = data.get('emotion_detected')
+    stress_level = data.get('stress_level') or 'Calm'
+
+    if not all([message_content, conversation_id]):
+        return jsonify({'success': False, 'message': 'Missing message or conversation ID'}), 400
+
+    conversation = Conversation.query.filter_by(id=conversation_id, user_id=g.user.id).first()
+    if not conversation:
+        return jsonify({'success': False, 'message': 'Conversation not found'}), 404
+
+    # Save user message immediately
+    user_message = Message(
+        conversation_id=conversation_id,
+        sender='user',
+        content=message_content,
+        emotion_detected=emotion_detected,
+        stress_level=stress_level
+    )
+    db.session.add(user_message)
+    db.session.commit()
+
+    user_data = {
+        'username': g.user.username,
+        'context': g.user.context if g.user.context else 'a student',
+        'likes': g.user.likes if g.user.likes else '',
+        'facial_emotion': emotion_detected,
+        'stress_level': stress_level,
+        'session_topic': conversation.topic if conversation.topic else 'general learning'
+    }
+
+    # Capture user id and conversation_id for use inside the generator
+    _user_id = g.user.id
+    _conv_id = conversation_id
+
+    def generate():
+        full_response = ""
+        try:
+            for chunk in llm_chatbot.get_response_stream(conversation_id, message_content, user_data):
+                full_response += chunk
+                # SSE format: "data: <text>\n\n"
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+        except Exception as e:
+            print(f"Stream generation error: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            return
+
+        # Save the complete VTA response to DB after streaming finishes
+        with app.app_context():
+            vta_message = Message(
+                conversation_id=_conv_id,
+                sender='vta',
+                content=full_response
+            )
+            db.session.add(vta_message)
+            db.session.commit()
+            yield f"data: {json.dumps({'done': True, 'message_id': vta_message.id})}\n\n"
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+
 @app.route('/api/chat', methods=['POST'])
 @login_required
 def chat_message():

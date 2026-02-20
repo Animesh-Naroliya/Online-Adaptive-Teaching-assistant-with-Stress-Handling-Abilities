@@ -1,148 +1,110 @@
 import os
 import json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Generator
 from dotenv import load_dotenv
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_groq import ChatGroq
 
-load_dotenv() 
+load_dotenv()
 
-MAX_HISTORY_MESSAGES = 10 
+MAX_HISTORY_MESSAGES = 10
+
 
 class LLM_Chatbot:
     def __init__(self):
-        self.llm = ChatGroq(model=os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"), temperature=0.7)
+        self.llm = ChatGroq(
+            model=os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant"),
+            temperature=0.7,
+            streaming=True   # Enable streaming at model level
+        )
         self.chain = self._build_chain()
         self.history_store: Dict[str, ChatMessageHistory] = {}
-        
+        # FIX 3: Cache for system prompts keyed by (session_id, emotion, stress)
+        self._prompt_cache: Dict[str, str] = {}
+
         if not os.environ.get("GROQ_API_KEY"):
             print("WARNING: GROQ_API_KEY not found. Using generic fallback.")
 
+    # FIX 1: Shortened, concise system prompt (~60% smaller, same adaptive logic)
     def _generate_system_prompt(self, user_data: Dict[str, Any]) -> str:
+        facial_emotion = user_data.get('facial_emotion', 'Neutral').upper()
+        stress_level   = user_data.get('stress_level', 'Calm').upper()
+        context        = user_data.get('context', 'a student')
+        likes          = user_data.get('likes', 'learning')
+        session_topic  = user_data.get('session_topic', 'general learning')
 
-        facial_emotion = user_data.get('facial_emotion', 'Neutral')
-        stress_level = user_data.get('stress_level', 'Calm')
-        context = user_data.get('context', 'a student')
-        likes = user_data.get('likes', 'learning')
-        session_topic = user_data.get('session_topic', 'general learning')
-        facial_emotion = facial_emotion.upper()
-        stress_level = stress_level.upper()
-
-        # ----- Combined Emotion + Stress Adaptation -----
-        current_state = (
-            f"Facial Emotion: {facial_emotion}, "
-            f"Stress Level: {stress_level}."
-        )
-
-        # -------- STRESS decides learning intensity --------
-        if stress_level == "HIGH STRESS":
-            stress_focus = "High Stress"
-
-        elif stress_level == "LIGHT STRESS":
-            stress_focus = "Light Stress"
-
+        # Stress → learning intensity
+        if "HIGH" in stress_level:
+            stress_note = "Use micro-steps, reassure, keep it very simple."
+        elif "LIGHT" in stress_level:
+            stress_note = "Simplify moderately, give step-by-step guidance, encourage."
         else:
-            stress_focus = "Calm"
+            stress_note = "Full explanations, introduce deeper knowledge."
 
-
-        # -------- EMOTION decides tone & engagement --------
-        if facial_emotion in ["SAD", "ANGRY", "CONFUSION"]:
-            emotion_focus = "Emotional Support"
-
+        # Emotion → tone
+        if facial_emotion in ("SAD", "ANGRY", "CONFUSION"):
+            tone_note = "Gentle, empathetic, supportive. End with a clarifying question."
         elif facial_emotion == "BOREDOM":
-            emotion_focus = "Engagement Boost"
-
-        elif facial_emotion in ["HAPPY", "FOCUSED"]:
-            emotion_focus = "Advanced Learning"
-
+            tone_note = "Energetic, surprising, include a fun fact or mini-challenge."
+        elif facial_emotion in ("HAPPY", "FOCUSED"):
+            tone_note = "Positive, academic, introduce advanced layers."
         else:
-            emotion_focus = "Neutral"
+            tone_note = "Balanced and encouraging."
 
-
-        # Final combined adaptation
-        adaptation_focus = f"{stress_focus} + {emotion_focus}"
-
-    
-
-        system_prompt = (
-            f"You are the **Emotion-Aware Virtual Teaching Assistant (VTA)**: an expert, dynamic, and highly engaging educator. "
-            f"Your prime directive is to make complex learning concepts immediately captivating, personalized, and easy to digest. "
-            f"\n\n---"
-            f"\n\n**Current Session Topic:** **{session_topic}**\n"
-            f"**CRITICAL INSTRUCTION:** All your responses MUST be directly related to and focused on the topic: '{session_topic}'. "
-            f"If the student asks about something unrelated, gently redirect them back to the session topic. "
-            f"Your expertise and teaching should revolve entirely around this subject matter.\n"
-            f"\n\n---"
-            f"\n\n**Student Profile & Context:**\n"
-            f"* **Context**: {context}\n"
-            f"* **Likes/Interests**: {likes}\n"
-            f"* **Current Emotional State**: **{current_state}**\n"
-            f"\n\n---"
-            f"\n\n**Adaptive Pedagogy & Tone Matrix:**\n"
-            f"Adapt your tone and approach instantaneously based on the learner's emotional and stress state ({adaptation_focus}):\n"
-            f"\n"
-            f"\nPRIMARY RULE:\n"
-            f"• Stress controls explanation difficulty.\n"
-            f"• Emotion controls communication tone.\n"
-
-            f"\nSTRESS ADAPTATION:\n"
-            f"\nHIGH STRESS:\n"
-            f"- Pause complex explanations.\n"
-            f"- Use very simple micro-learning steps.\n"
-            f"- Provide reassurance.\n"
-            f"- Offer optional short break or fun mini activity.\n"
-
-            f"\nLIGHT STRESS:\n"
-            f"- Simplify explanation moderately.\n"
-            f"- Provide step-by-step guidance.\n"
-            f"- Encourage confidence.\n"
-
-            f"\nCALM:\n"
-            f"- Provide full explanations.\n"
-            f"- Introduce deeper or advanced knowledge.\n"
-            f"\n"
-
-            f"* **If Sad, Angry, or Confusion** 😔: Adopt a gentle, highly supportive, and empathetic tone. Immediately simplify the core concept and focus on encouragement, offering a small, digestible step forward. Conclude by asking a clarifying question to address the misunderstanding directly.\n"
-            f"* **If Boredom** 😴: Shift to an energetic, stimulating, and challenging tone. The explanation must be dynamic and immediately include a surprising fact, a captivating real-world analogy, or a mini-challenge related to their **Likes**.\n"
-            f"* **If Happy or Focused** 😄: Maintain a positive, stimulating, and academic tone. Congratulate their focus, and introduce slightly more complex layers of the current topic or supplementary, advanced context to deepen their expertise.\n"
-            f"\n\n---"
-            f"\n\n**Response Formatting & Engagement Protocol (Mandatory):**\n"
-            f"Your response must be aesthetically attractive, easy to scan, and stimulating. Ignore constraints on paragraph count. Focus on quality and structure:\n"
-            f"\n"
-            f"1.  **Opening Hook:** Start with an energetic, concise **Title or Hook** that summarizes the main idea and includes an engaging emoji (e.g., 'Unlocking the Mystery of Fusion 💡').\n"
-            f"2.  **Personalized Bridge:** Immediately integrate a highly relevant analogy or example **directly related to the student's Likes ('{likes}')** to bridge the new concept to their existing interests. This is critical for creating interest.\n"
-            f"3.  **Structured Content:** Break down the main explanation using a clear hierarchy, utilizing:\n"
-            f"    * **Markdown Headings (`###`)** for sub-topics.\n"
-            f"    * **Bullet Points (`*`) or Numbered Lists (`1.`)** for key principles or steps.\n"
-            f"    * **Bold text** to emphasize academic vocabulary or crucial takeaways.\n"
-            f"4.  **Actionable Conclusion:** Do not simply end. Conclude with a specific, forward-looking **Challenge** or an **Open-ended Question** that requires the student to reflect or propose the next learning step."
-            f"\n\n---"
-            f"\n\n**Constraint Removal:** Do not adhere to any specific paragraph count. Let the content's depth dictate the length, but ensure the structure remains digestible and focused."
+        prompt = (
+            f"You are the Emotion-Aware Virtual Teaching Assistant (VTA). "
+            f"TOPIC: '{session_topic}' — stay strictly on this topic; redirect off-topic questions.\n"
+            f"STUDENT: {context} | Likes: {likes} | Emotion: {facial_emotion} | Stress: {stress_level}\n\n"
+            f"STRESS RULE: {stress_note}\n"
+            f"TONE RULE: {tone_note}\n\n"
+            f"RESPONSE FORMAT:\n"
+            f"1. Hook: 1-line engaging title + emoji.\n"
+            f"2. Bridge: 1 analogy tied to student's likes ('{likes}').\n"
+            f"3. Content: Use ### headings, bullet points, bold key terms.\n"
+            f"4. Close: End with a challenge or open question.\n"
+            f"Be thorough but scannable. No filler sentences."
         )
-        return system_prompt
+        return prompt
+
+    # FIX 3: Cached prompt retrieval
+    def _get_system_prompt(self, session_id: str, user_data: Dict[str, Any]) -> str:
+        emotion = user_data.get('facial_emotion', 'Neutral').upper()
+        stress  = user_data.get('stress_level', 'Calm').upper()
+        cache_key = f"{session_id}|{emotion}|{stress}"
+
+        if cache_key not in self._prompt_cache:
+            self._prompt_cache[cache_key] = self._generate_system_prompt(user_data)
+            # Keep cache bounded to avoid memory growth
+            if len(self._prompt_cache) > 200:
+                oldest = next(iter(self._prompt_cache))
+                del self._prompt_cache[oldest]
+
+        return self._prompt_cache[cache_key]
 
     def _build_chain(self):
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                MessagesPlaceholder(variable_name="system_message"), 
-                MessagesPlaceholder(variable_name="history"),
-                ("human", "{input}"),
-            ]
-        )
+        prompt = ChatPromptTemplate.from_messages([
+            MessagesPlaceholder(variable_name="system_message"),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{input}"),
+        ])
         return prompt | self.llm | StrOutputParser()
-    
+
     def _get_session_history(self, session_id: str) -> ChatMessageHistory:
         if session_id not in self.history_store:
             self.history_store[session_id] = ChatMessageHistory()
         return self.history_store[session_id]
 
+    def _trim_history_buffer(self, history: ChatMessageHistory) -> None:
+        if len(history.messages) > MAX_HISTORY_MESSAGES:
+            history.messages = history.messages[-MAX_HISTORY_MESSAGES:]
+
+    # Original blocking method (kept for compatibility / quiz)
     def get_response(self, conversation_id: int, user_message: str, user_data: Dict[str, Any]) -> str:
         session_id = str(conversation_id)
-        system_text = self._generate_system_prompt(user_data)
+        system_text = self._get_system_prompt(session_id, user_data)  # FIX 3
         system_message_lc = SystemMessage(content=system_text)
         history = self._get_session_history(session_id)
         history.add_user_message(user_message)
@@ -152,7 +114,7 @@ class LLM_Chatbot:
                 {
                     "input": user_message,
                     "system_message": [system_message_lc],
-                    "history": history.messages[:-1]    
+                    "history": history.messages[:-1]
                 },
                 config={}
             )
@@ -163,74 +125,85 @@ class LLM_Chatbot:
 
         history.add_ai_message(ai_text)
         self._trim_history_buffer(history)
-        
         return ai_text
 
-    def _trim_history_buffer(self, history: ChatMessageHistory, max_messages: int = MAX_HISTORY_MESSAGES) -> None:
-        if len(history.messages) > max_messages:
-            history.messages = history.messages[-max_messages:]
+    # FIX 2: Streaming method — yields text chunks as they arrive
+    def get_response_stream(self, conversation_id: int, user_message: str, user_data: Dict[str, Any]) -> Generator[str, None, str]:
+        session_id = str(conversation_id)
+        system_text = self._get_system_prompt(session_id, user_data)  # FIX 3
+        system_message_lc = SystemMessage(content=system_text)
+        history = self._get_session_history(session_id)
+        history.add_user_message(user_message)
+
+        full_response = ""
+        try:
+            for chunk in self.chain.stream(
+                {
+                    "input": user_message,
+                    "system_message": [system_message_lc],
+                    "history": history.messages[:-1]
+                },
+                config={}
+            ):
+                full_response += chunk
+                yield chunk
+        except Exception as e:
+            print(f"Groq Streaming Error: {e}")
+            fallback = "I'm having trouble connecting right now. Please try again."
+            full_response = fallback
+            yield fallback
+
+        history.add_ai_message(full_response)
+        self._trim_history_buffer(history)
 
     def generate_quiz(self, chat_context: str, difficulty: str = "Medium", num_questions: int = 5) -> Optional[Dict[str, Any]]:
-        """Generates a quiz based on the conversation context with customizable length."""
-        
+        """Generates a quiz based on the conversation context."""
         system_prompt = (
-            f"You are an expert quiz generator. Your task is to create a {difficulty} level quiz based on the provided conversation context. "
-            f"If the context is empty or too short, generate a general knowledge quiz about technology and science. "
-            f"\n\n**Output Format Constraint:**\n"
-            f"You must return ONLY a valid JSON object. Do not include any markdown formatting (like ```json), explanations, or extra text. "
-            f"The JSON must follow this exact structure:\n"
-            f"{{{{\n"
-            f"  \"title\": \"Quiz Title\",\n"
-            f"  \"questions\": [\n"
-            f"    {{{{\n"
-            f"      \"id\": 1,\n"
-            f"      \"question\": \"Question text here?\",\n"
-            f"      \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],\n"
-            f"      \"correct_answer\": \"Option A\" (Must be one of the options)\n"
-            f"    }}}}\n"
-            f"  ]\n"
-            f"}}}}\n"
+            f"You are a quiz generator. Create a {difficulty} quiz from the context below. "
+            f"If context is too short, generate a general technology/science quiz.\n\n"
+            f"Return ONLY valid JSON (no markdown, no extra text) in this structure:\n"
+            f'{{ "title": "...", "questions": [{{'
+            f'"id":1,"question":"...","options":["A","B","C","D"],"correct_answer":"A"'
+            f'}}] }}\n'
             f"Generate exactly {num_questions} questions."
         )
-        
-        print(f"DEBUG: asking LLM for {num_questions} questions...")
+
+        print(f"DEBUG: Generating quiz — {num_questions} questions, difficulty={difficulty}")
 
         try:
-            # Create a temporary chain for this specific task
-            # We use {context} as a variable to be safe from braces in user messages
             prompt = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
                 ("human", "Context:\n{context}")
             ])
-            
-            chain = prompt | self.llm | StrOutputParser()
+            # Use non-streaming LLM for quiz (we need the full JSON at once)
+            llm_no_stream = ChatGroq(
+                model=os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant"),
+                temperature=0.3,
+                streaming=False
+            )
+            chain = prompt | llm_no_stream | StrOutputParser()
             result = chain.invoke({"context": chat_context})
-            
-            # Clean up potential markdown formatting if the model disregards instructions
+
             cleaned_result = result.replace("```json", "").replace("```", "").strip()
-            
             quiz_data = json.loads(cleaned_result)
             print(f"DEBUG: LLM Response Keys: {list(quiz_data.keys())}")
 
-            # Normalize keys (handle Capitalized 'Questions')
+            # Normalize key casing
             if "questions" not in quiz_data:
                 for key in quiz_data.keys():
                     if key.lower() == "questions":
                         quiz_data["questions"] = quiz_data.pop(key)
                         break
-            
-            # Validation: Must have 'questions' list
+
             if "questions" not in quiz_data or not isinstance(quiz_data["questions"], list):
-                print("DEBUG: Invalid quiz structure. Missing 'questions' list.")
+                print("DEBUG: Invalid quiz structure.")
                 return None
 
-            # HARD ENFORCEMENT: Slice the questions to the requested number
             if len(quiz_data["questions"]) > num_questions:
-                print(f"DEBUG: LLM returned {len(quiz_data['questions'])} questions, slicing to {num_questions}")
                 quiz_data["questions"] = quiz_data["questions"][:num_questions]
-            
+
             return quiz_data
-            
+
         except Exception as e:
             print(f"Quiz Generation Error: {e}")
             return None

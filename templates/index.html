@@ -2109,25 +2109,21 @@
             document.getElementById('messages-container').appendChild(userEl);
             scrollToBottom();
 
+            // Show "..." typing indicator
             const loadingEl = createMessageElement('vta', '...');
             loadingEl.id = 'vta-loading-indicator';
             document.getElementById('messages-container').appendChild(loadingEl);
             scrollToBottom();
 
-            // Check if this is the first message (topic setting)
+            // --- First message: set the session topic ---
             if (!sessionTopicSet) {
-                // Set the session topic
                 const topicData = await fetch_data(`/api/sessions/${currentConversationId}/set-topic`, 'POST', {
                     topic: message
                 });
-
                 document.getElementById('vta-loading-indicator')?.remove();
-
                 if (topicData.success) {
                     sessionTopicSet = true;
                     document.getElementById('current-session-title').textContent = topicData.title;
-
-                    // Display acknowledgment
                     const ackEl = createMessageElement('vta', topicData.acknowledgment);
                     document.getElementById('messages-container').appendChild(ackEl);
                     renderVtaContent(ackEl, topicData.acknowledgment);
@@ -2139,42 +2135,72 @@
                 return;
             }
 
-            // Normal chat message
-            const data = await fetch_data('/api/chat', 'POST', {
-                message: message,
-                conversation_id: currentConversationId,
-                emotion_detected: currentEmotion,
-                stress_level: currentStress
-            });
+            // --- Normal chat: use streaming endpoint (FIX 2) ---
+            try {
+                const response = await fetch('/api/chat/stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        message: message,
+                        conversation_id: currentConversationId,
+                        emotion_detected: currentEmotion,
+                        stress_level: currentStress
+                    })
+                });
 
-            document.getElementById('vta-loading-indicator')?.remove();
-            if (data.success) {
-                const vtaMessage = data.vta_response;
-                const vtaEl = createMessageElement('vta', vtaMessage, 'VTA');
+                if (!response.ok) {
+                    document.getElementById('vta-loading-indicator')?.remove();
+                    alert('VTA Error: ' + response.statusText);
+                    return;
+                }
+
+                // Remove "..." indicator and create VTA message bubble
+                document.getElementById('vta-loading-indicator')?.remove();
+                const vtaEl = createMessageElement('vta', '');
                 document.getElementById('messages-container').appendChild(vtaEl);
-
                 const contentDiv = vtaEl.querySelector('.vta-text-content');
                 contentDiv.innerHTML = '';
+                scrollToBottom();
 
-                let charIndex = 0;
-                let currentText = '';
-                const typingInterval = setInterval(() => {
-                    if (charIndex < vtaMessage.length) {
-                        currentText += vtaMessage.charAt(charIndex);
-                        // Parse markdown in real-time as text streams
-                        contentDiv.innerHTML = marked.parse(currentText);
-                        charIndex++;
-                        scrollToBottom();
-                    } else {
-                        clearInterval(typingInterval);
-                        // Final render to ensure everything is properly formatted
-                        contentDiv.innerHTML = marked.parse(vtaMessage);
-                        feather.replace();
-                        scrollToBottom();
+                // Read the SSE stream chunk-by-chunk
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let accumulatedText = '';
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // keep incomplete last line
+
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        try {
+                            const parsed = JSON.parse(line.slice(6));
+                            if (parsed.error) {
+                                contentDiv.innerHTML = '<em>Error: ' + parsed.error + '</em>';
+                            } else if (parsed.chunk) {
+                                accumulatedText += parsed.chunk;
+                                // Render markdown as tokens arrive (real-time streaming)
+                                contentDiv.innerHTML = marked.parse(accumulatedText);
+                                scrollToBottom();
+                            } else if (parsed.done) {
+                                // Final render + feather icons refresh
+                                contentDiv.innerHTML = marked.parse(accumulatedText);
+                                feather.replace();
+                                scrollToBottom();
+                            }
+                        } catch (e) { /* ignore malformed lines */ }
                     }
-                }, 15);
-            } else {
-                alert('VTA Error: ' + data.message);
+                }
+            } catch (err) {
+                document.getElementById('vta-loading-indicator')?.remove();
+                console.error('Streaming error:', err);
+                alert('Connection error. Please try again.');
             }
         }
 
