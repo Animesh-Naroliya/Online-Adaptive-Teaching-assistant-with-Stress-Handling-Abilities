@@ -276,7 +276,18 @@ RESPONSE QUALITY STANDARD
             result = chain.invoke({"context": chat_context})
 
             cleaned_result = result.replace("```json", "").replace("```", "").strip()
-            quiz_data = json.loads(cleaned_result)
+
+            # Parse defensively: models often prepend/append text around JSON.
+            quiz_data = None
+            try:
+                quiz_data = json.loads(cleaned_result)
+            except json.JSONDecodeError:
+                extracted_json = self._extract_json_object(cleaned_result)
+                if extracted_json:
+                    quiz_data = json.loads(extracted_json)
+                else:
+                    print("Quiz parser: could not extract valid JSON; using fallback quiz.")
+                    return self._build_fallback_quiz(difficulty, num_questions, chat_context)
 
             # Normalize key casing
             if "questions" not in quiz_data:
@@ -285,17 +296,174 @@ RESPONSE QUALITY STANDARD
                         quiz_data["questions"] = quiz_data.pop(key)
                         break
 
+            # Handle alternate top-level wrappers from model output.
+            if "questions" not in quiz_data:
+                for wrapper_key in ("quiz", "data", "payload"):
+                    wrapped = quiz_data.get(wrapper_key)
+                    if isinstance(wrapped, dict) and isinstance(wrapped.get("questions"), list):
+                        quiz_data = wrapped
+                        break
+
+            # Handle top-level list output from model.
+            if isinstance(quiz_data, list):
+                quiz_data = {"title": f"{difficulty} Quiz", "questions": quiz_data}
+
             if "questions" not in quiz_data or not isinstance(quiz_data["questions"], list):
-                return None
+                print("Quiz parser: missing questions list; using fallback quiz.")
+                return self._build_fallback_quiz(difficulty, num_questions, chat_context)
+
+            normalized_questions: List[Dict[str, Any]] = []
+            for index, q in enumerate(quiz_data["questions"], start=1):
+                if not isinstance(q, dict):
+                    continue
+
+                options = q.get("options")
+                if isinstance(options, dict):
+                    # Accept {"A":"..","B":".."} format and keep consistent ordering.
+                    ordered_keys = sorted(options.keys(), key=lambda x: str(x))
+                    options = [str(options[k]) for k in ordered_keys]
+                if not isinstance(options, list) or len(options) < 2:
+                    continue
+
+                question_text = q.get("question")
+                if not question_text:
+                    question_text = q.get("prompt")
+                if not isinstance(question_text, str) or not question_text.strip():
+                    continue
+
+                # Normalize answer into a usable index for frontend logic.
+                correct_index = q.get("correct_index")
+                if not isinstance(correct_index, int):
+                    alt_index = q.get("answer_index")
+                    if isinstance(alt_index, int):
+                        correct_index = alt_index
+                if not isinstance(correct_index, int):
+                    correct_answer = (
+                        q.get("correct_answer")
+                        or q.get("answer")
+                        or q.get("correctOption")
+                    )
+                    if isinstance(correct_answer, str):
+                        answer_clean = correct_answer.strip()
+                        if len(answer_clean) == 1 and answer_clean.upper() in ("A", "B", "C", "D"):
+                            correct_index = ord(answer_clean.upper()) - ord("A")
+                        elif answer_clean.isdigit():
+                            # Accept "1", "2", ... as 1-based answer indices.
+                            numeric_index = int(answer_clean) - 1
+                            if 0 <= numeric_index < len(options):
+                                correct_index = numeric_index
+                        else:
+                            # Accept formats like "A) ...", "Option B", etc.
+                            for letter in ("A", "B", "C", "D"):
+                                if letter in answer_clean.upper() and len(options) >= (ord(letter) - ord("A") + 1):
+                                    correct_index = ord(letter) - ord("A")
+                                    break
+                            try:
+                                if not isinstance(correct_index, int):
+                                    correct_index = options.index(answer_clean)
+                            except ValueError:
+                                lower_options = [str(opt).strip().lower() for opt in options]
+                                if answer_clean.lower() in lower_options:
+                                    correct_index = lower_options.index(answer_clean.lower())
+                    elif isinstance(correct_answer, int):
+                        correct_index = correct_answer
+
+                if not isinstance(correct_index, int) or not (0 <= correct_index < len(options)):
+                    continue
+
+                normalized_questions.append({
+                    "id": q.get("id", index),
+                    "question": question_text.strip(),
+                    "options": options,
+                    "correct_index": correct_index,
+                    "correct_answer": options[correct_index]
+                })
+
+            if not normalized_questions:
+                print("Quiz parser: no valid normalized questions; using fallback quiz.")
+                return self._build_fallback_quiz(difficulty, num_questions, chat_context)
+
+            quiz_data["questions"] = normalized_questions
 
             if len(quiz_data["questions"]) > num_questions:
                 quiz_data["questions"] = quiz_data["questions"][:num_questions]
+
+            if "title" not in quiz_data or not isinstance(quiz_data["title"], str):
+                quiz_data["title"] = f"{difficulty} Quiz"
 
             return quiz_data
 
         except Exception as e:
             print(f"Quiz Generation Error: {e}")
+            return self._build_fallback_quiz(difficulty, num_questions, chat_context)
+
+    def _extract_json_object(self, text: str) -> Optional[str]:
+        """Extract the first balanced JSON object from model output text."""
+        start = text.find("{")
+        if start == -1:
             return None
+
+        depth = 0
+        in_string = False
+        escape = False
+        for i in range(start, len(text)):
+            ch = text[i]
+            if in_string:
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == '"':
+                    in_string = False
+                continue
+
+            if ch == '"':
+                in_string = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start:i + 1]
+        return None
+
+    def _build_fallback_quiz(self, difficulty: str, num_questions: int, chat_context: str) -> Dict[str, Any]:
+        """Return a guaranteed-valid quiz payload when AI formatting is unusable."""
+        topic_hint = "General Knowledge"
+        if isinstance(chat_context, str) and chat_context.strip():
+            words = [w for w in chat_context.replace("\n", " ").split(" ") if w.strip()]
+            if words:
+                topic_hint = " ".join(words[:4]).strip(":,.!?") or topic_hint
+
+        bank = [
+            {"question": "Which data structure uses FIFO order?", "options": ["Stack", "Queue", "Tree", "Graph"], "correct_index": 1},
+            {"question": "What does CPU stand for?", "options": ["Central Process Unit", "Central Processing Unit", "Computer Personal Unit", "Central Power Unit"], "correct_index": 1},
+            {"question": "Which protocol is primarily used to browse websites?", "options": ["FTP", "SMTP", "HTTP", "SSH"], "correct_index": 2},
+            {"question": "What is the binary value of decimal 5?", "options": ["101", "110", "111", "100"], "correct_index": 0},
+            {"question": "Which language runs natively in a web browser?", "options": ["Python", "C++", "Java", "JavaScript"], "correct_index": 3},
+            {"question": "Which storage is fastest?", "options": ["HDD", "SSD", "RAM", "DVD"], "correct_index": 2},
+            {"question": "What is the output of 2 + 2 * 3?", "options": ["12", "8", "10", "6"], "correct_index": 1},
+            {"question": "Which one is an operating system?", "options": ["MySQL", "Linux", "React", "TensorFlow"], "correct_index": 1},
+        ]
+
+        if num_questions < 1:
+            num_questions = 1
+        selected = bank[:num_questions] if num_questions <= len(bank) else (bank * ((num_questions // len(bank)) + 1))[:num_questions]
+
+        questions = []
+        for idx, q in enumerate(selected, start=1):
+            questions.append({
+                "id": idx,
+                "question": q["question"],
+                "options": q["options"],
+                "correct_index": q["correct_index"],
+                "correct_answer": q["options"][q["correct_index"]],
+            })
+
+        return {
+            "title": f"{difficulty} Quiz - {topic_hint}",
+            "questions": questions,
+        }
 
 
 # Global instance for Flask application use
