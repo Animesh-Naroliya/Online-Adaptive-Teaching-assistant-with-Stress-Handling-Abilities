@@ -243,19 +243,50 @@ def generate_quiz():
         data = request.get_json() or {}
         difficulty = data.get('difficulty', 'Medium')
         num_questions = int(data.get('num_questions', 5))
-        
-        # Get recent conversation for context
-        last_conversation = Conversation.query.filter_by(user_id=g.user.id).order_by(Conversation.created_at.desc()).first()
-        
-        chat_text = ""
-        if last_conversation:
-            messages = Message.query.filter_by(conversation_id=last_conversation.id).order_by(Message.timestamp.desc()).limit(30).all()
-            messages.reverse()
-            chat_text = "\n".join([f"{m.sender}: {m.content}" for m in messages])
-        else:
-            chat_text = "No recent conversation. Please generate a general knowledge quiz."
 
-        print(f"Generating {difficulty} quiz ({num_questions} qs) for User ID {g.user.id}")
+        # Prefer explicitly selected conversation from active chat session.
+        conversation_id = data.get('conversation_id')
+        selected_conversation = None
+
+        if conversation_id is not None:
+            try:
+                conversation_id = int(conversation_id)
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'message': 'Invalid conversation ID format.'}), 400
+
+            selected_conversation = Conversation.query.filter_by(
+                id=conversation_id,
+                user_id=g.user.id
+            ).first()
+            if not selected_conversation:
+                return jsonify({'success': False, 'message': 'Selected conversation not found.'}), 404
+        else:
+            # Backward-compatible fallback when no explicit session id is provided.
+            selected_conversation = Conversation.query.filter_by(
+                user_id=g.user.id
+            ).order_by(Conversation.created_at.desc()).first()
+
+        if not selected_conversation:
+            return jsonify({
+                'success': False,
+                'message': 'No chat session found. Start a chat first so quiz topics can be inferred.'
+            }), 400
+
+        messages = Message.query.filter_by(
+            conversation_id=selected_conversation.id
+        ).order_by(Message.timestamp.desc()).limit(60).all()
+        messages.reverse()
+
+        if not messages:
+            return jsonify({
+                'success': False,
+                'message': 'No messages in this chat yet. Discuss a topic first, then generate quiz.'
+            }), 400
+
+        topic_line = selected_conversation.topic or "Inferred from conversation"
+        chat_text = f"Session Topic: {topic_line}\n" + "\n".join([f"{m.sender}: {m.content}" for m in messages])
+
+        print(f"Generating {difficulty} quiz ({num_questions} qs) for User ID {g.user.id} on Conversation {selected_conversation.id}")
 
         quiz_data = llm_chatbot.generate_quiz(chat_text, difficulty, num_questions)
         

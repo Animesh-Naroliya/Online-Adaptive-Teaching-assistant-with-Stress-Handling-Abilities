@@ -206,6 +206,8 @@
 
                 <h2 id="q-text" class="text-2xl font-bold mb-8 leading-relaxed">Loading...</h2>
                 <div id="q-options" class="space-y-4"></div>
+                <div id="q-feedback"
+                    class="hidden mt-6 p-4 rounded-xl border border-slate-600 bg-slate-900/50 text-sm text-slate-200 leading-relaxed"></div>
             </div>
         </div>
 
@@ -221,6 +223,10 @@
                     id="xp-gain">+0 XP</div>
                 <div class="bg-slate-800 px-6 py-2 rounded-lg border border-slate-700 text-teal-400 font-bold"
                     id="gem-gain">+0 Gems</div>
+            </div>
+            <div id="incorrect-review-wrapper" class="hidden max-w-3xl mx-auto mb-8 text-left">
+                <h3 class="text-xl font-bold text-amber-300 mb-4">Incorrect Questions Review</h3>
+                <div id="incorrect-review-list" class="space-y-4"></div>
             </div>
             <button onclick="location.reload()"
                 class="px-8 py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-medium">New Quest</button>
@@ -240,8 +246,12 @@
         let currentStats = {};
         let selectedDifficulty = 'Medium';
         let numQuestions = 5;
+        let activeConversationId = null;
+        let incorrectAnswers = [];
 
         window.onload = async function () {
+            const urlConversationId = new URLSearchParams(window.location.search).get('conversation_id');
+            activeConversationId = urlConversationId || sessionStorage.getItem('active_conversation_id');
             await fetchStats();
             feather.replace();
         };
@@ -275,7 +285,11 @@
                 const res = await fetch('/api/gamification/generate_quiz', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ difficulty: selectedDifficulty, num_questions: numQuestions })
+                    body: JSON.stringify({
+                        difficulty: selectedDifficulty,
+                        num_questions: numQuestions,
+                        conversation_id: activeConversationId
+                    })
                 });
                 const data = await res.json();
 
@@ -307,6 +321,7 @@
             document.getElementById('q-total').innerText = currentQuiz.questions.length;
             currentQuestionIndex = 0;
             score = 0;
+            incorrectAnswers = [];
             renderQuestion();
         }
 
@@ -320,6 +335,9 @@
 
             document.getElementById('q-current').innerText = currentQuestionIndex + 1;
             document.getElementById('q-text').innerText = q.question;
+            const feedbackDiv = document.getElementById('q-feedback');
+            feedbackDiv.classList.add('hidden');
+            feedbackDiv.innerText = '';
 
             const optionsDiv = document.getElementById('q-options');
             optionsDiv.innerHTML = '';
@@ -336,6 +354,7 @@
         function handleAnswer(selectedIndex, btn) {
             const q = currentQuiz.questions[currentQuestionIndex];
             const isCorrect = selectedIndex === q.correct_index;
+            const selectedOption = q.options[selectedIndex];
 
             document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
 
@@ -350,7 +369,23 @@
                 if (buttons[q.correct_index]) {
                     buttons[q.correct_index].classList.add('bg-emerald-900/50', 'border-emerald-500');
                 }
+                incorrectAnswers.push({
+                    question: q.question,
+                    selected_option: selectedOption,
+                    correct_option: q.options[q.correct_index],
+                    explanation: q.explanation || "The correct option matches the concept discussed in this topic."
+                });
             }
+
+            const feedbackDiv = document.getElementById('q-feedback');
+            const baseClarification = q.explanation || `Correct answer is "${q.options[q.correct_index]}".`;
+            const misconception = (q.misconception_map && (q.misconception_map[String(selectedIndex)] || q.misconception_map[selectedOption])) || "";
+            if (isCorrect) {
+                feedbackDiv.innerText = `Correct. ${baseClarification}`;
+            } else {
+                feedbackDiv.innerText = `You picked "${selectedOption}" because it can seem plausible: ${misconception || "it matches a partial idea but misses the key concept."} Clarification: ${baseClarification}`;
+            }
+            feedbackDiv.classList.remove('hidden');
 
             setTimeout(() => {
                 currentQuestionIndex++;
@@ -359,7 +394,7 @@
                 } else {
                     finishQuiz();
                 }
-            }, 1500);
+            }, 2800);
         }
 
         async function finishQuiz() {
@@ -386,12 +421,39 @@
             document.getElementById('score-text').innerText = `You scored ${score}/${currentQuiz.questions.length} on ${selectedDifficulty}`;
             document.getElementById('xp-gain').innerText = `+${xpEarned} XP`;
             document.getElementById('gem-gain').innerText = `+${gemsEarned} Gems`;
+            renderIncorrectReview();
 
             await fetch('/api/gamification/earn', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ xp: xpEarned, gems: gemsEarned })
             });
+        }
+
+        function renderIncorrectReview() {
+            const wrapper = document.getElementById('incorrect-review-wrapper');
+            const list = document.getElementById('incorrect-review-list');
+            list.innerHTML = '';
+
+            if (!incorrectAnswers.length) {
+                wrapper.classList.add('hidden');
+                return;
+            }
+
+            incorrectAnswers.forEach((item, idx) => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-800 border border-slate-700 rounded-xl p-4";
+                card.innerHTML = `
+                    <p class="text-sm text-slate-400 mb-1">Q${idx + 1}</p>
+                    <p class="font-semibold text-white mb-2">${item.question}</p>
+                    <p class="text-sm text-red-300 mb-1">Your answer: ${item.selected_option}</p>
+                    <p class="text-sm text-emerald-300 mb-1">Correct answer: ${item.correct_option}</p>
+                    <p class="text-sm text-slate-300">Why: ${item.explanation}</p>
+                `;
+                list.appendChild(card);
+            });
+
+            wrapper.classList.remove('hidden');
         }
 
         async function fetchGallery() {

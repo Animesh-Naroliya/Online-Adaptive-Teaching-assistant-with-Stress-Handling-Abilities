@@ -253,10 +253,13 @@ RESPONSE QUALITY STANDARD
         """Generates a quiz based on the conversation context."""
         system_prompt = (
             f"You are a quiz generator. Create a {difficulty} quiz from the context below. "
-            f"If context is too short, generate a general technology/science quiz.\n\n"
+            f"Use ONLY the subjects explicitly discussed in this chat context. "
+            f"Do NOT introduce unrelated topics.\n\n"
             f"Return ONLY valid JSON (no markdown, no extra text) in this structure:\n"
             f'{{ "title": "...", "questions": [{{'
-            f'"id":1,"question":"...","options":["A","B","C","D"],"correct_answer":"A"'
+            f'"id":1,"question":"...","options":["A","B","C","D"],'
+            f'"correct_answer":"A","explanation":"one-line clarification",'
+            f'"misconception_map":{{"0":"why option 0 feels right but is wrong","1":"...","2":"...","3":"..."}}'
             f'}}] }}\n'
             f"Generate exactly {num_questions} questions."
         )
@@ -371,12 +374,36 @@ RESPONSE QUALITY STANDARD
                 if not isinstance(correct_index, int) or not (0 <= correct_index < len(options)):
                     continue
 
+                explanation = q.get("explanation")
+                if not isinstance(explanation, str) or not explanation.strip():
+                    explanation = f'"{options[correct_index]}" is correct because it best matches the concept discussed in the chat.'
+
+                misconception_raw = q.get("misconception_map")
+                misconception_map: Dict[str, str] = {}
+                if isinstance(misconception_raw, dict):
+                    for k, v in misconception_raw.items():
+                        if isinstance(v, str) and v.strip():
+                            key = str(k).strip()
+                            misconception_map[key] = v.strip()
+                elif isinstance(q.get("misconceptions"), list):
+                    for opt_i, text in enumerate(q.get("misconceptions")):
+                        if isinstance(text, str) and text.strip():
+                            misconception_map[str(opt_i)] = text.strip()
+
+                if not misconception_map:
+                    for opt_i, opt_text in enumerate(options):
+                        if opt_i == correct_index:
+                            continue
+                        misconception_map[str(opt_i)] = f'"{opt_text}" sounds close but misses the key relationship in this topic.'
+
                 normalized_questions.append({
                     "id": q.get("id", index),
                     "question": question_text.strip(),
                     "options": options,
                     "correct_index": correct_index,
-                    "correct_answer": options[correct_index]
+                    "correct_answer": options[correct_index],
+                    "explanation": explanation.strip(),
+                    "misconception_map": misconception_map
                 })
 
             if not normalized_questions:
@@ -431,19 +458,146 @@ RESPONSE QUALITY STANDARD
         """Return a guaranteed-valid quiz payload when AI formatting is unusable."""
         topic_hint = "General Knowledge"
         if isinstance(chat_context, str) and chat_context.strip():
-            words = [w for w in chat_context.replace("\n", " ").split(" ") if w.strip()]
-            if words:
-                topic_hint = " ".join(words[:4]).strip(":,.!?") or topic_hint
+            for line in chat_context.splitlines():
+                if line.lower().startswith("session topic:"):
+                    extracted = line.split(":", 1)[1].strip()
+                    if extracted:
+                        topic_hint = extracted
+                        break
+            if topic_hint == "General Knowledge":
+                words = [w for w in chat_context.replace("\n", " ").split(" ") if w.strip()]
+                if words:
+                    topic_hint = " ".join(words[:4]).strip(":,.!?") or topic_hint
 
         bank = [
-            {"question": "Which data structure uses FIFO order?", "options": ["Stack", "Queue", "Tree", "Graph"], "correct_index": 1},
-            {"question": "What does CPU stand for?", "options": ["Central Process Unit", "Central Processing Unit", "Computer Personal Unit", "Central Power Unit"], "correct_index": 1},
-            {"question": "Which protocol is primarily used to browse websites?", "options": ["FTP", "SMTP", "HTTP", "SSH"], "correct_index": 2},
-            {"question": "What is the binary value of decimal 5?", "options": ["101", "110", "111", "100"], "correct_index": 0},
-            {"question": "Which language runs natively in a web browser?", "options": ["Python", "C++", "Java", "JavaScript"], "correct_index": 3},
-            {"question": "Which storage is fastest?", "options": ["HDD", "SSD", "RAM", "DVD"], "correct_index": 2},
-            {"question": "What is the output of 2 + 2 * 3?", "options": ["12", "8", "10", "6"], "correct_index": 1},
-            {"question": "Which one is an operating system?", "options": ["MySQL", "Linux", "React", "TensorFlow"], "correct_index": 1},
+            {
+                "question": f"Which statement best matches the concept of {topic_hint}?",
+                "options": [
+                    f"A core idea from {topic_hint}",
+                    "An unrelated random claim",
+                    "A math-only identity",
+                    "A UI color palette rule"
+                ],
+                "correct_index": 0,
+                "explanation": f"The correct choice directly reflects the core idea discussed for {topic_hint}.",
+                "misconception_map": {
+                    "1": "It may feel specific, but it is unrelated to the topic.",
+                    "2": "It sounds technical, but not from this chat context.",
+                    "3": "It confuses interface design with subject understanding."
+                }
+            },
+            {
+                "question": f"In the discussion about {topic_hint}, which approach is most context-relevant?",
+                "options": [
+                    "Ignoring the topic entirely",
+                    f"Using examples directly tied to {topic_hint}",
+                    "Switching to an unrelated subject",
+                    "Avoiding all definitions"
+                ],
+                "correct_index": 1,
+                "explanation": "Topic-linked examples test understanding more reliably than unrelated shifts.",
+                "misconception_map": {
+                    "0": "Skipping context can feel simpler but breaks comprehension.",
+                    "2": "Changing subject feels productive but avoids the learning goal.",
+                    "3": "Avoiding definitions removes conceptual clarity."
+                }
+            },
+            {
+                "question": f"What should be prioritized when revising {topic_hint} from this chat?",
+                "options": [
+                    "Memorizing random facts",
+                    "Reading only UI code",
+                    "Reviewing key terms and explanations from the conversation",
+                    "Skipping topic-specific details"
+                ],
+                "correct_index": 2,
+                "explanation": "Reviewing the same concepts and explanations strengthens topic retention.",
+                "misconception_map": {
+                    "0": "Random facts feel broad but are not aligned with your discussion.",
+                    "1": "UI-only review may look useful but ignores subject concepts.",
+                    "3": "Skipping details creates shallow understanding."
+                }
+            },
+            {
+                "question": f"Which quiz question is most aligned with {topic_hint}?",
+                "options": [
+                    f"A question directly about {topic_hint}",
+                    "A question about unrelated sports scores",
+                    "A question about random geography",
+                    "A question about movie plots"
+                ],
+                "correct_index": 0,
+                "explanation": "Alignment means the question must test what was actually discussed.",
+                "misconception_map": {
+                    "1": "Current events can be engaging but are off-topic here.",
+                    "2": "General knowledge is useful but not this session’s focus.",
+                    "3": "Narrative recall does not assess the target concept."
+                }
+            },
+            {
+                "question": f"To check understanding of {topic_hint}, what is the best method?",
+                "options": [
+                    "Avoid topic vocabulary",
+                    "Ask context-based conceptual questions",
+                    "Use only yes/no questions with no context",
+                    "Never validate answers"
+                ],
+                "correct_index": 1,
+                "explanation": "Conceptual, context-based questions reveal whether ideas are truly understood.",
+                "misconception_map": {
+                    "0": "Removing key terms can simplify wording but hides understanding gaps.",
+                    "2": "Binary questions are quick but weak for depth checks.",
+                    "3": "Without validation, errors remain uncorrected."
+                }
+            },
+            {
+                "question": f"When answering questions on {topic_hint}, which is preferred?",
+                "options": [
+                    "Context-aware explanations",
+                    "Completely off-topic answers",
+                    "Only unrelated trivia",
+                    "No reasoning at all"
+                ],
+                "correct_index": 0,
+                "explanation": "Reasoning tied to context demonstrates genuine comprehension.",
+                "misconception_map": {
+                    "1": "Off-topic responses may sound fluent but fail the objective.",
+                    "2": "Trivia knowledge does not replace concept mastery.",
+                    "3": "No reasoning prevents diagnosis of misunderstanding."
+                }
+            },
+            {
+                "question": f"Which option indicates strong understanding of {topic_hint}?",
+                "options": [
+                    "Cannot relate any concept",
+                    "Can connect concepts to examples discussed",
+                    "Avoids all key terms",
+                    "Answers every question randomly"
+                ],
+                "correct_index": 1,
+                "explanation": "Linking ideas to examples from the chat is a strong signal of understanding.",
+                "misconception_map": {
+                    "0": "Admitting no relation is honest but shows lack of conceptual grasp.",
+                    "2": "Avoiding terms can hide uncertainty rather than resolve it.",
+                    "3": "Random answers can score by luck but show no mastery."
+                }
+            },
+            {
+                "question": f"What is a good next step after learning {topic_hint}?",
+                "options": [
+                    "Switch topics immediately without review",
+                    "Practice with topic-focused quiz questions",
+                    "Ignore mistakes",
+                    "Avoid asking follow-up questions"
+                ],
+                "correct_index": 1,
+                "explanation": "Targeted practice plus feedback converts short-term recall into stable understanding.",
+                "misconception_map": {
+                    "0": "Moving on quickly feels efficient but weakens retention.",
+                    "2": "Ignoring mistakes repeats the same misunderstanding.",
+                    "3": "No follow-up prevents clarification of weak points."
+                }
+            },
         ]
 
         if num_questions < 1:
@@ -458,6 +612,8 @@ RESPONSE QUALITY STANDARD
                 "options": q["options"],
                 "correct_index": q["correct_index"],
                 "correct_answer": q["options"][q["correct_index"]],
+                "explanation": q.get("explanation", "This option best matches the discussed concept."),
+                "misconception_map": q.get("misconception_map", {})
             })
 
         return {
